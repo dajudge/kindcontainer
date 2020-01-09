@@ -5,15 +5,12 @@ import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import com.github.dockerjava.api.model.Volume;
 import io.fabric8.kubernetes.api.model.Node;
-import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.output.OutputFrame;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
 
@@ -22,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
@@ -38,6 +36,9 @@ public class KindContainer extends GenericContainer<KindContainer> {
     private static final String CONTAINER_NAME = "kindcontainer-control-plane";
     private boolean initialized = false;
     private KubernetesClient client;
+    private String podSubnet = "10.244.0.0/16";
+    private String serviceSubnet = "10.97.0.0/12";
+
 
     public KindContainer() {
         super("kindest/node:v1.16.3");
@@ -78,9 +79,16 @@ public class KindContainer extends GenericContainer<KindContainer> {
                 e.printStackTrace();
             }
             try {
+                final String containerIpAddress = getInternalIpAddress(this);
+                LOG.info("Container IP address: {}", containerIpAddress);
+                final Map<String, String> params = new HashMap<String, String>() {{
+                    put("NODE_IP", containerIpAddress);
+                    put("POD_SUBNET", podSubnet);
+                    put("SERVICE_SUBNET", serviceSubnet);
+                }};
                 LOG.info("Writing /kind/kubeadm.conf...");
-                copyFileToContainer(kubeadmConfigFor(this), "/kind/kubeadm.conf");
-                copyFileToContainer(Transferable.of(defaultCni()), "/kind/default-cni.conf");
+                copyFileToContainer(kubeadmConfigFor(params), "/kind/kubeadm.conf");
+                copyFileToContainer(Transferable.of(defaultCni(params)), "/kind/default-cni.conf");
                 kubeadm("init");
                 kubectl("apply", asList("-f", "/kind/default-cni.conf"));
                 kubectl("taint", asList("node", CONTAINER_NAME, "node-role.kubernetes.io/master:NoSchedule-"));
@@ -99,8 +107,8 @@ public class KindContainer extends GenericContainer<KindContainer> {
         exec("kubectl", cmd, exec);
     }
 
-    private byte[] defaultCni() {
-        return Utils.loadResource("default-cni.yml").getBytes(UTF_8);
+    private byte[] defaultCni(final Map<String, String> replacements) {
+        return template(Utils.loadResource("default-cni.yml"), replacements).getBytes(UTF_8);
     }
 
     private void kubeadm(final String cmd) throws IOException, InterruptedException {
@@ -131,12 +139,15 @@ public class KindContainer extends GenericContainer<KindContainer> {
         }
     }
 
-    private static Transferable kubeadmConfigFor(final KindContainer container) {
-        final String containerIpAddress = getInternalIpAddress(container);
-        LOG.info("Container IP address: {}", containerIpAddress);
-        final String config = Utils.loadResource("kubeadm.conf")
-                .replace("${NODE_IP}", containerIpAddress);
-        return Transferable.of(config.getBytes(UTF_8));
+    private static Transferable kubeadmConfigFor(final Map<String, String> replacements) {
+        return Transferable.of(template(Utils.loadResource("kubeadm.conf"), replacements).getBytes(UTF_8));
+    }
+
+    private static String template(String string, final Map<String, String> replacements) {
+        return replacements.entrySet().stream()
+                .map(r -> ((Function<String, String>) (s -> s.replace("${" + r.getKey() + "}", r.getValue()))))
+                .reduce(Function.identity(), Function::andThen)
+                .apply(string);
     }
 
     @NotNull
@@ -203,5 +214,15 @@ public class KindContainer extends GenericContainer<KindContainer> {
                         "Ready".equals(cond.getType()) && "True".equals(cond.getStatus())
                 )).findAny().orElse(null), 300000, () -> "No node became ready");
         LOG.info("Node ready: {}", readyNode.getMetadata().getName());
+    }
+
+    public KindContainer withPodSubnet(final String cidr) {
+        podSubnet = cidr;
+        return this;
+    }
+
+    public KindContainer withServiceSubnet(final String cidr) {
+        serviceSubnet = cidr;
+        return this;
     }
 }

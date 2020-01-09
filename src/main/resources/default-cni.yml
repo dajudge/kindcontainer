@@ -79,7 +79,7 @@ spec:
                 fieldRef:
                   fieldPath: status.podIP
             - name: POD_SUBNET
-              value: 10.244.0.0/16
+              value: ${POD_SUBNET}
           volumeMounts:
             - name: cni-cfg
               mountPath: /etc/cni/net.d

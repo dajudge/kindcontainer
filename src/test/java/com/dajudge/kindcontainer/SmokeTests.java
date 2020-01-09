@@ -23,7 +23,9 @@ public class SmokeTests {
     ));
 
     @ClassRule
-    public static final KindContainer K8S = new KindContainer();
+    public static final KindContainer K8S = new KindContainer()
+            .withPodSubnet("10.245.0.0/16")
+            .withServiceSubnet("10.112.0.0/12");
 
     @Test
     public void can_list_namespaces() {
