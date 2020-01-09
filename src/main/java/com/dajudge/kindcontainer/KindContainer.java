@@ -201,7 +201,7 @@ public class KindContainer extends GenericContainer<KindContainer> {
         final Node readyNode = waitUntilNotNull(() -> client.nodes().list().getItems().stream().filter(
                 node -> node.getStatus().getConditions().stream().anyMatch(cond ->
                         "Ready".equals(cond.getType()) && "True".equals(cond.getStatus())
-                )).findAny().orElse(null), 120000, () -> "No node became ready");
+                )).findAny().orElse(null), 300000, () -> "No node became ready");
         LOG.info("Node ready: {}", readyNode.getMetadata().getName());
     }
 }
