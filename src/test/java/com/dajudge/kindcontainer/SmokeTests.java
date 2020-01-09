@@ -71,15 +71,11 @@ public class SmokeTests {
 
     private Optional<Pod> getPod(final HasMetadata pod) {
         return K8S.client().pods().list().getItems().stream()
-                .peek(c -> {
-                    LOG.info("{}: {}", c.getMetadata().getName(), c.getStatus().getPhase());
-                })
                 .filter(c -> isSame(pod, c))
                 .findFirst();
     }
 
     private boolean isSame(final HasMetadata a, final HasMetadata b) {
-        LOG.info("{} ? {}", qname(a), qname(b));
         if (!b.getMetadata().getName().equals(a.getMetadata().getName())) {
             return false;
         }
