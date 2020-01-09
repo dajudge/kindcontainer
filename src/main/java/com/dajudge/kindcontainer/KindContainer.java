@@ -1,9 +1,11 @@
 package com.dajudge.kindcontainer;
 
+import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import com.github.dockerjava.api.model.Volume;
 import io.fabric8.kubernetes.api.model.Node;
+import io.fabric8.kubernetes.client.ConfigBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import org.jetbrains.annotations.NotNull;
@@ -55,15 +57,13 @@ public class KindContainer extends GenericContainer<KindContainer> {
                     put("/tmp", "rw");
                     put("/var", "rw");
                 }})
-                .withLogConsumer(new Slf4jLogConsumer(LOG) {
-                    @Override
-                    public void accept(final OutputFrame outputFrame) {
-                        super.accept(outputFrame);
-                        initialize();
-                    }
-                })
                 .withExposedPorts(6443)
                 .withStartupTimeout(ofSeconds(300));
+    }
+
+    @Override
+    protected void containerIsStarting(final InspectContainerResponse containerInfo) {
+        initialize();
     }
 
     private void initialize() {
