@@ -4,8 +4,6 @@ import io.fabric8.kubernetes.api.model.*;
 import org.jetbrains.annotations.NotNull;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.HashSet;
 import java.util.Optional;
@@ -26,7 +24,6 @@ public class SmokeTests {
 
     @ClassRule
     public static final KindContainer K8S = new KindContainer();
-    public static final Logger LOG = LoggerFactory.getLogger(SmokeTests.class);
 
     @Test
     public void can_list_namespaces() {
