@@ -1,0 +1,21 @@
+#! /bin/sh
+
+DIR="$(cd "$(dirname "$0")"; pwd)";
+
+IMG=$(docker build -q $DIR/.workbench)
+
+if [ "$#" -eq 0 ]; then
+    CMD=bash
+else
+    CMD="$@"
+fi
+
+docker run --rm \
+    --net host \
+    -v /etc/passwd:/etc/passwd \
+    -v /etc/group:/etc/group \
+    -v ${HOME}:${HOME} \
+    -e HOME:${HOME} \
+    -v "${DIR}":/project \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    -it $IMG sudo -u ${USER} -E sh -c "cd /project; ${CMD}"
