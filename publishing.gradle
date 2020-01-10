@@ -1,0 +1,61 @@
+println "Configuring bintray for tag ${version}..."
+def scmUrl = 'https://github.com/dajudge/kindcontainer'
+def pomConfig = {
+    licenses {
+        license {
+            name "The Apache Software License, Version 2.0"
+            url "http://www.apache.org/licenses/LICENSE-2.0.txt"
+            distribution "repo"
+        }
+    }
+    developers {
+        developer {
+            id "alexstockinger"
+            name "Alex Stockinger"
+            email "mail@alexstockinger.de"
+        }
+    }
+
+    scm {
+        url scmUrl
+    }
+}
+
+publishing {
+    publications {
+        KindcontainerPublication(MavenPublication) {
+            from components.java
+            groupId "com.dajudge.kindcontainer"
+            artifactId 'kindcontainer'
+            version rootProject.version
+            pom.withXml {
+                def root = asNode()
+                root.appendNode('description', 'kindcontainer')
+                root.appendNode('name', 'kindcontainer')
+                root.appendNode('url', scmUrl)
+                root.children().last() + pomConfig
+            }
+        }
+    }
+}
+
+def bintrayUser = System.getenv().BINTRAY_API_USER
+def bintrayKey = System.getenv().BINTRAY_API_KEY
+println "Bintray credentials: ${bintrayUser}:${bintrayKey?.replaceAll(".", "*")}"
+bintray {
+    user = bintrayUser
+    key = bintrayKey
+    pkg {
+        repo = 'kindcontainer'
+        name = 'kindcontainer'
+        licenses = ['Apache-2.0']
+        vcsUrl = scmUrl
+        publications = ['KindcontainerPublication']
+        version {
+            name = rootProject.version
+            desc = "kindcontainer ${rootProject.version}"
+            released  = new Date()
+            vcsTag = rootProject.version
+        }
+    }
+}
