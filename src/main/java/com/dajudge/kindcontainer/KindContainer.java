@@ -188,11 +188,18 @@ public class KindContainer extends GenericContainer<KindContainer> {
     @NotNull
     private KubernetesClient createClient() {
         try {
-            final String adminKubeConfig = copyFileFromContainer("/etc/kubernetes/admin.conf", Utils::readString);
-            return new DefaultKubernetesClient(fromKubeconfig(patchKubeConfig(adminKubeConfig)));
+            return new DefaultKubernetesClient(fromKubeconfig(kubeconfig()));
         } catch (final IOException e) {
             throw new RuntimeException("Failed to extract kubeconfig from test container", e);
         }
+    }
+
+    public String kubeconfig() {
+        final String adminKubeConfig = copyFileFromContainer(
+                "/etc/kubernetes/admin.conf",
+                Utils::readString
+        );
+        return patchKubeConfig(adminKubeConfig);
     }
 
     @SuppressWarnings("unchecked")
