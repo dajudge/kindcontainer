@@ -19,7 +19,7 @@ version versionDetails.isCleanTag && gitVersion().startsWith("release/")
         : "${System.currentTimeMillis()}-SNAPSHOT"
 println "Build version $version"
 
-if(!version.endsWith("-SNAPSHOT")) {
+if (!version.endsWith("-SNAPSHOT")) {
     apply from: "publishing.gradle"
 } else {
     println "Not a tag build. Not configuring bintray."
@@ -31,6 +31,7 @@ dependencies {
 
     testImplementation "junit:junit:4.13"
     testImplementation "org.awaitility:awaitility:4.0.2"
+    testImplementation "com.squareup.okhttp3:okhttp:4.3.1"
 
     testRuntimeOnly "ch.qos.logback:logback-classic:1.2.3"
 }

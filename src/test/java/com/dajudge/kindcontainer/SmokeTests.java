@@ -4,10 +4,14 @@ import io.fabric8.kubernetes.api.model.*;
 import org.jetbrains.annotations.NotNull;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.testcontainers.shaded.okhttp3.OkHttpClient;
+import org.testcontainers.shaded.okhttp3.Request;
+import org.testcontainers.shaded.okhttp3.Response;
+import org.testcontainers.shaded.okhttp3.ResponseBody;
 
-import java.util.HashSet;
-import java.util.Optional;
-import java.util.Set;
+import java.io.IOException;
+import java.util.*;
+import java.util.concurrent.Callable;
 
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
@@ -24,6 +28,8 @@ public class SmokeTests {
 
     @ClassRule
     public static final KindContainer K8S = new KindContainer()
+            .withExposedPorts(30000)
+            .waitingFor(NullWaitStrategy.INSTANCE)
             .withPodSubnet("10.245.0.0/16")
             .withServiceSubnet("10.112.0.0/12");
 
@@ -37,9 +43,58 @@ public class SmokeTests {
 
     @Test
     public void can_start_pod() {
+        final Pod pod = createTestPod();
+        await("testpod")
+                .timeout(ofSeconds(300))
+                .until(() -> isRunning(pod));
+    }
+
+    @Test
+    public void exposes_node_port() {
+        final Pod pod = createTestPod();
+        K8S.client().services().create(new ServiceBuilder()
+                .withNewMetadata()
+                .withName("nginx")
+                .withNamespace(pod.getMetadata().getNamespace())
+                .endMetadata()
+                .withNewSpec()
+                .withType("NodePort")
+                .withSelector(new HashMap<String, String>() {{
+                    put("app", "nginx");
+                }})
+                .withPorts(new ServicePortBuilder()
+                        .withNodePort(30000)
+                        .withPort(80)
+                        .withTargetPort(new IntOrString(80))
+                        .withProtocol("TCP")
+                        .build())
+                .endSpec()
+                .build());
+        await("testpod")
+                .timeout(ofSeconds(300))
+                .until(http("http://localhost:" + K8S.getMappedPort(30000)));
+    }
+
+    private Callable<Boolean> http(final String url) {
+        return () -> {
+            try {
+                final OkHttpClient client = new OkHttpClient();
+                final Request request = new Request.Builder().url(url).build();
+                final Response response = client.newCall(request).execute();
+                try (final ResponseBody body = response.body()) {
+                    System.out.println(response.code());
+                    return response.code() == 200;
+                }
+            } catch (final IOException e) {
+                return false;
+            }
+        };
+    }
+
+    private Pod createTestPod() {
         final Namespace namespace = new NamespaceBuilder()
                 .withNewMetadata()
-                .withName("podtest")
+                .withName(UUID.randomUUID().toString().replaceAll("-", ""))
                 .endMetadata()
                 .build();
         K8S.client().namespaces().create(namespace);
@@ -47,18 +102,23 @@ public class SmokeTests {
                 .withNewMetadata()
                 .withName("testpod")
                 .withNamespace(namespace.getMetadata().getName())
+                .withLabels(new HashMap<String, String>() {{
+                    put("app", "nginx");
+                }})
                 .endMetadata()
                 .withNewSpec()
                 .withContainers(new ContainerBuilder()
                         .withName("test")
                         .withImage("nginx")
+                        .withPorts(new ContainerPortBuilder()
+                                .withContainerPort(80)
+                                .withProtocol("TCP")
+                                .build())
                         .build())
                 .endSpec()
                 .build();
         K8S.client().pods().inNamespace(namespace.getMetadata().getName()).create(pod);
-        await("testpod")
-                .timeout(ofSeconds(300))
-                .until(() -> isRunning(pod));
+        return pod;
     }
 
     @NotNull
