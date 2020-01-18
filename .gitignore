@@ -2,5 +2,5 @@
 *.iml
 build/
 .gradle/
-
+deploy.sh
 out/
