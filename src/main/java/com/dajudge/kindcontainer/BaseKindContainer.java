@@ -5,6 +5,7 @@ import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import com.github.dockerjava.api.model.Volume;
 import io.fabric8.kubernetes.api.model.Node;
+import io.fabric8.kubernetes.api.model.NodeCondition;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import org.jetbrains.annotations.NotNull;
@@ -17,9 +18,13 @@ import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 import static com.dajudge.kindcontainer.Utils.loadResource;
+import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
@@ -33,7 +38,6 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     private static final String CONTAINER_NAME = "kindcontainer-control-plane";
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.97.0.0/12";
-
 
     public BaseKindContainer() {
         this("kindest/node:v1.16.3");
@@ -146,7 +150,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
 
     @NotNull
     private static String getInternalIpAddress(final BaseKindContainer container) {
-        return Utils.waitUntilNotNull(() -> {
+        return waitUntilNotNull(() -> {
                     final Map<String, ContainerNetwork> networks = container.getContainerInfo()
                             .getNetworkSettings().getNetworks();
                     if (!networks.containsKey("bridge")) {
@@ -165,6 +169,19 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
             return new DefaultKubernetesClient(fromKubeconfig(kubeconfig()));
         } catch (final IOException e) {
             throw new RuntimeException("Failed to extract kubeconfig from test container", e);
+        }
+    }
+
+    public void withClient(final Consumer<KubernetesClient> callable) {
+        withClient(client -> {
+            callable.accept(client);
+            return null;
+        });
+    }
+
+    public <R> R withClient(final Function<KubernetesClient, R> callable) {
+        try (final @NotNull KubernetesClient client = client()) {
+            return callable.apply(client);
         }
     }
 
@@ -189,11 +206,22 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     public void start() {
         super.start();
         LOG.info("Waiting for a node to become ready...");
-        final Node readyNode = Utils.waitUntilNotNull(() -> client().nodes().list().getItems().stream().filter(
-                node -> node.getStatus().getConditions().stream().anyMatch(cond ->
-                        "Ready".equals(cond.getType()) && "True".equals(cond.getStatus())
-                )).findAny().orElse(null), 300000, () -> "No node became ready");
+        final Node readyNode = waitUntilNotNull(findReadyNode(), 300000, () -> "No node became ready");
         LOG.info("Node ready: {}", readyNode.getMetadata().getName());
+    }
+
+    @NotNull
+    private Supplier<Node> findReadyNode() {
+        final Predicate<NodeCondition> isReadyStatus = cond ->
+                "Ready".equals(cond.getType()) && "True".equals(cond.getStatus());
+        final Predicate<Node> nodeIsReady = node -> node.getStatus().getConditions().stream()
+                .anyMatch(isReadyStatus);
+        return () -> withClient(client -> {
+            return client.nodes().list().getItems().stream()
+                    .filter(nodeIsReady)
+                    .findAny()
+                    .orElse(null);
+        });
     }
 
     public T withPodSubnet(final String cidr) {
