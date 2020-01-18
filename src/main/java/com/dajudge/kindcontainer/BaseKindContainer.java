@@ -18,10 +18,9 @@ import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
+import static com.dajudge.kindcontainer.Utils.loadResource;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
-import static java.lang.System.currentTimeMillis;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
@@ -32,7 +31,6 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
     private static final Yaml YAML = new Yaml();
     private static final String CONTAINER_NAME = "kindcontainer-control-plane";
-    private boolean initialized = false;
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.97.0.0/12";
 
@@ -76,39 +74,23 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
 
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
-        initialize();
-    }
-
-    private void initialize() {
-        if (initialized) {
-            return;
+        try {
+            final String containerIpAddress = getInternalIpAddress(this);
+            LOG.info("Container IP address: {}", containerIpAddress);
+            final Map<String, String> params = new HashMap<String, String>() {{
+                put("NODE_IP", containerIpAddress);
+                put("POD_SUBNET", podSubnet);
+                put("SERVICE_SUBNET", serviceSubnet);
+            }};
+            LOG.info("Writing /kind/kubeadm.conf...");
+            copyFileToContainer(kubeadmConfigFor(params), "/kind/kubeadm.conf");
+            copyFileToContainer(Transferable.of(defaultCni(params)), "/kind/default-cni.conf");
+            kubeadm("init");
+            kubectl("apply", asList("-f", "/kind/default-cni.conf"));
+            kubectl("taint", asList("node", CONTAINER_NAME, "node-role.kubernetes.io/master:NoSchedule-"));
+        } catch (final Exception e) {
+            LOG.error("Failed to initialize node.", e);
         }
-        initialized = true;
-        final Runnable r = () -> {
-            try {
-                Thread.sleep(5000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-            try {
-                final String containerIpAddress = getInternalIpAddress(this);
-                LOG.info("Container IP address: {}", containerIpAddress);
-                final Map<String, String> params = new HashMap<String, String>() {{
-                    put("NODE_IP", containerIpAddress);
-                    put("POD_SUBNET", podSubnet);
-                    put("SERVICE_SUBNET", serviceSubnet);
-                }};
-                LOG.info("Writing /kind/kubeadm.conf...");
-                copyFileToContainer(kubeadmConfigFor(params), "/kind/kubeadm.conf");
-                copyFileToContainer(Transferable.of(defaultCni(params)), "/kind/default-cni.conf");
-                kubeadm("init");
-                kubectl("apply", asList("-f", "/kind/default-cni.conf"));
-                kubectl("taint", asList("node", CONTAINER_NAME, "node-role.kubernetes.io/master:NoSchedule-"));
-            } catch (final Exception e) {
-                LOG.error("Failed to initialize node.", e);
-            }
-        };
-        new Thread(r).start();
     }
 
     private void kubectl(final String cmd, final List<String> params) throws IOException, InterruptedException {
@@ -120,7 +102,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     }
 
     private byte[] defaultCni(final Map<String, String> replacements) {
-        return template(Utils.loadResource("default-cni.yml"), replacements).getBytes(UTF_8);
+        return template(loadResource("default-cni.yml"), replacements).getBytes(UTF_8);
     }
 
     private void kubeadm(final String cmd) throws IOException, InterruptedException {
@@ -152,7 +134,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     }
 
     private static Transferable kubeadmConfigFor(final Map<String, String> replacements) {
-        return Transferable.of(template(Utils.loadResource("kubeadm.conf"), replacements).getBytes(UTF_8));
+        return Transferable.of(template(loadResource("kubeadm.conf"), replacements).getBytes(UTF_8));
     }
 
     private static String template(String string, final Map<String, String> replacements) {
@@ -164,7 +146,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
 
     @NotNull
     private static String getInternalIpAddress(final BaseKindContainer container) {
-        return waitUntilNotNull(() -> {
+        return Utils.waitUntilNotNull(() -> {
                     final Map<String, ContainerNetwork> networks = container.getContainerInfo()
                             .getNetworkSettings().getNetworks();
                     if (!networks.containsKey("bridge")) {
@@ -175,22 +157,6 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
                 CONTAINER_IP_TIMEOUT_MSECS,
                 () -> "Failed to determine container IP address"
         );
-    }
-
-    private static <T> T waitUntilNotNull(
-            final Supplier<T> check,
-            final int timeout,
-            final Supplier<String> errorMessage
-    ) {
-        final long start = currentTimeMillis();
-        while ((currentTimeMillis() - start) < timeout) {
-            final T result = check.get();
-            if (result != null) {
-                return result;
-            }
-            Thread.yield();
-        }
-        throw new IllegalStateException(errorMessage.get());
     }
 
     @NotNull
@@ -223,7 +189,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     public void start() {
         super.start();
         LOG.info("Waiting for a node to become ready...");
-        final Node readyNode = waitUntilNotNull(() -> client().nodes().list().getItems().stream().filter(
+        final Node readyNode = Utils.waitUntilNotNull(() -> client().nodes().list().getItems().stream().filter(
                 node -> node.getStatus().getConditions().stream().anyMatch(cond ->
                         "Ready".equals(cond.getType()) && "True".equals(cond.getStatus())
                 )).findAny().orElse(null), 300000, () -> "No node became ready");

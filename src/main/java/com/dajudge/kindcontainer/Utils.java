@@ -5,7 +5,9 @@ import org.jetbrains.annotations.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.function.Supplier;
 
+import static java.lang.System.currentTimeMillis;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class Utils {
@@ -30,5 +32,21 @@ final class Utils {
         } catch (final IOException e) {
             throw new RuntimeException("Failed to load resource: " + name, e);
         }
+    }
+
+    static <T> T waitUntilNotNull(
+            final Supplier<T> check,
+            final int timeout,
+            final Supplier<String> errorMessage
+    ) {
+        final long start = currentTimeMillis();
+        while ((currentTimeMillis() - start) < timeout) {
+            final T result = check.get();
+            if (result != null) {
+                return result;
+            }
+            Thread.yield();
+        }
+        throw new IllegalStateException(errorMessage.get());
     }
 }
