@@ -40,7 +40,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     private String serviceSubnet = "10.97.0.0/12";
 
     public BaseKindContainer() {
-        this("kindest/node:v1.16.3");
+        this("kindest/node:v1.17.0");
     }
 
     public BaseKindContainer(final String image) {
