@@ -82,7 +82,6 @@ public class SmokeTests {
                 final Request request = new Request.Builder().url(url).build();
                 final Response response = client.newCall(request).execute();
                 try (final ResponseBody body = response.body()) {
-                    System.out.println(response.code());
                     return response.code() == 200;
                 }
             } catch (final IOException e) {
