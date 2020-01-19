@@ -11,18 +11,24 @@ First you need to add the kindcontainer dependency to your build. Kindcontainer 
 Add the bintray repo and the kindcontainer dependency:
 ```xml
 <project>
-    <!-- TODO reference bintray repo -->
+    <!-- kindcontainer is not on maven central, yet -->
+    <repositories>
+        <repository>
+            <id>bintray-kindcontainer</id>
+            <name>The kindcontainer bintray repo</name>
+            <url>https://dl.bintray.com/dajudge/kindcontainer</url>
+        </repository>
+    </repositories>
 
     <dependencies>
         <dependency>
             <groupId>com.dajudge.kindcontainer</groupId>
             <artifactId>kindcontainer</artifactId>
-            <version>0.0.3</version>
+            <version>${kindcontainer.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
 </project>
-
 ```
 
 #### Gradle
@@ -38,7 +44,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation 'com.dajudge.kindcontainer:kindcontainer:0.0.3'
+    testImplementation "com.dajudge.kindcontainer:kindcontainer:${kindcontainerVersion}"
 }
 ```
 ### Use in JUnit test
