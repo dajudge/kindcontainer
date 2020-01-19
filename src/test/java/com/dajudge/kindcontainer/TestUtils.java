@@ -2,6 +2,7 @@ package com.dajudge.kindcontainer;
 
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import org.jetbrains.annotations.NotNull;
 import org.testcontainers.shaded.okhttp3.OkHttpClient;
 import org.testcontainers.shaded.okhttp3.Request;
 import org.testcontainers.shaded.okhttp3.Response;
@@ -9,27 +10,38 @@ import org.testcontainers.shaded.okhttp3.ResponseBody;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.UUID;
+import java.util.Random;
 import java.util.concurrent.Callable;
 
+import static java.util.UUID.randomUUID;
+
 final class TestUtils {
+    private static final Random RANDOM = new Random();
+
     private TestUtils() {
     }
 
     static String createNewNamespace(final KubernetesClient client) {
         final Namespace namespace = new NamespaceBuilder()
                 .withNewMetadata()
-                .withName(UUID.randomUUID().toString().replaceAll("-", ""))
+                .withName(randomIdentifier())
                 .endMetadata()
                 .build();
         client.namespaces().create(namespace);
         return namespace.getMetadata().getName();
     }
 
-    static Pod createTestPod(final KubernetesClient client, final String namespace) {
+    @NotNull
+    static String randomIdentifier() {
+        final String alphabet = "abcdefghijklmnopqrstuvwxyz";
+        return alphabet.charAt(RANDOM.nextInt(alphabet.length()))
+                + randomUUID().toString().replaceAll("-", "");
+    }
+
+    static Pod createSimplePod(final KubernetesClient client, final String namespace) {
         final Pod pod = new PodBuilder()
                 .withNewMetadata()
-                .withName("testpod")
+                .withName(randomIdentifier())
                 .withNamespace(namespace)
                 .withLabels(new HashMap<String, String>() {{
                     put("app", "nginx");

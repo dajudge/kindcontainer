@@ -26,6 +26,7 @@ import java.util.function.Supplier;
 import static com.dajudge.kindcontainer.Utils.loadResource;
 import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
+import static java.lang.String.join;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
@@ -36,6 +37,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
     private static final Yaml YAML = new Yaml();
     private static final String CONTAINER_NAME = "kindcontainer-control-plane";
+    private static final String CONTAINTER_WORKDIR = "/kindcontainer";
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.97.0.0/12";
 
@@ -82,68 +84,109 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
             final String containerIpAddress = getInternalIpAddress(this);
             LOG.info("Container IP address: {}", containerIpAddress);
             final Map<String, String> params = new HashMap<String, String>() {{
-                put("NODE_IP", containerIpAddress);
-                put("POD_SUBNET", podSubnet);
-                put("SERVICE_SUBNET", serviceSubnet);
+                put(".NodeIp", containerIpAddress);
+                put(".PodSubnet", podSubnet);
+                put(".ServiceSubnet", serviceSubnet);
             }};
-            LOG.info("Writing /kind/kubeadm.conf...");
-            copyFileToContainer(kubeadmConfigFor(params), "/kind/kubeadm.conf");
-            copyFileToContainer(Transferable.of(defaultCni(params)), "/kind/default-cni.conf");
-            kubeadm("init");
-            kubectl("apply", asList("-f", "/kind/default-cni.conf"));
-            kubectl("taint", asList("node", CONTAINER_NAME, "node-role.kubernetes.io/master:NoSchedule-"));
+            exec("mkdir", "-p", CONTAINTER_WORKDIR);
+            kubeadmInit(params);
+            installCni(params);
+            installStorage();
+            untaintNode();
         } catch (final Exception e) {
-            LOG.error("Failed to initialize node.", e);
+            throw new RuntimeException("Failed to initialize node", e);
         }
     }
 
-    private void kubectl(final String cmd, final List<String> params) throws IOException, InterruptedException {
-        final List<String> exec = new ArrayList<>(asList(
-                "--kubeconfig", "/etc/kubernetes/admin.conf"
-        ));
-        exec.addAll(params);
-        exec("kubectl", cmd, exec);
+    private void untaintNode() throws IOException, InterruptedException {
+        kubectl("taint", "node", CONTAINER_NAME, "node-role.kubernetes.io/master:NoSchedule-");
     }
 
-    private byte[] defaultCni(final Map<String, String> replacements) {
-        return template(loadResource("default-cni.yml"), replacements).getBytes(UTF_8);
-    }
-
-    private void kubeadm(final String cmd) throws IOException, InterruptedException {
-        exec("kubeadm", cmd, asList(
+    private void kubeadmInit(final Map<String, String> params) throws IOException, InterruptedException {
+        final String kubeadmConfig = writeContainerFile(
+                kubeadmConfigFor(params),
+                CONTAINTER_WORKDIR + "/kubeadmConfig.yaml"
+        );
+        exec(asList(
+                "kubeadm", "init",
                 // preflight errors are expected, in particular for swap being enabled
                 "--ignore-preflight-errors=all",
                 // specify our generated config file
-                "--config=/kind/kubeadm.conf",
+                "--config=" + kubeadmConfig,
                 // increase verbosity for debugging
                 "--v=6"
         ));
     }
 
-    private void exec(final String bin, final String cmd, final List<String> params) throws IOException, InterruptedException {
-        LOG.info("Running {} {}...", bin, cmd);
-        final List<String> exec = new ArrayList<>(asList(bin, cmd));
-        exec.addAll(params);
+    private void installStorage() throws IOException, InterruptedException {
+        kubectl("apply", "-f", "/kind/manifests/default-storage.yaml");
+    }
+
+    private void installCni(final Map<String, String> params) throws IOException, InterruptedException {
+        final String cniManifest = templateContainerFile(
+                "/kind/manifests/default-cni.yaml",
+                CONTAINTER_WORKDIR + "/cni.yaml",
+                params
+        );
+        kubectl("apply", "-f", cniManifest);
+    }
+
+    @NotNull
+    private String templateContainerFile(
+            final String sourceFileName,
+            final String destFileName,
+            final Map<String, String> params
+    ) {
+        return writeContainerFile(template(readContainerFile(sourceFileName), params), destFileName);
+    }
+
+    @NotNull
+    private String readContainerFile(final String fname) {
+        return copyFileFromContainer(fname, Utils::readString);
+    }
+
+    private String writeContainerFile(final String content, final String fname) {
+        LOG.info("Writing container file: {}", fname);
+        copyFileToContainer(Transferable.of(content.getBytes(UTF_8)), fname);
+        return fname;
+    }
+
+    private void kubectl(
+            final String... params
+    ) throws IOException, InterruptedException {
+        final List<String> exec = new ArrayList<>(asList("kubectl", "--kubeconfig", "/etc/kubernetes/admin.conf"));
+        exec.addAll(asList(params));
+        exec(exec);
+    }
+
+    private void exec(final String... exec) throws IOException, InterruptedException {
+        exec(asList(exec));
+    }
+
+    private void exec(final List<String> exec) throws IOException, InterruptedException {
+        final String cmdString = join(" ", exec);
+        LOG.info("Executing command: {}", cmdString);
         final ExecResult execResult = execInContainer(exec.toArray(new String[exec.size()]));
         final int exitCode = execResult.getExitCode();
         if (exitCode == 0) {
-            LOG.info("{} {} exited with status code {}", bin, cmd, exitCode);
+            LOG.debug("\"{}\" exited with status code {}", cmdString, exitCode);
             LOG.debug("{}", execResult.getStdout().replaceAll("(?m)^", "STDOUT: "));
             LOG.debug("{}", execResult.getStderr().replaceAll("(?m)^", "STDERR: "));
         } else {
+            LOG.error("\"{}\" exited with status code {}", cmdString, exitCode);
             LOG.error("{}", execResult.getStdout().replaceAll("(?m)^", "STDOUT: "));
             LOG.error("{}", execResult.getStderr().replaceAll("(?m)^", "STDERR: "));
-            throw new IllegalStateException(bin + " " + cmd + " exited with status code " + execResult);
+            throw new IllegalStateException(cmdString + " exited with status code " + execResult);
         }
     }
 
-    private static Transferable kubeadmConfigFor(final Map<String, String> replacements) {
-        return Transferable.of(template(loadResource("kubeadm.conf"), replacements).getBytes(UTF_8));
+    private static String kubeadmConfigFor(final Map<String, String> replacements) {
+        return template(loadResource("kubeadm.conf"), replacements);
     }
 
     private static String template(String string, final Map<String, String> replacements) {
         return replacements.entrySet().stream()
-                .map(r -> ((Function<String, String>) (s -> s.replace("${" + r.getKey() + "}", r.getValue()))))
+                .map(r -> ((Function<String, String>) (s -> s.replace("{{ " + r.getKey() + " }}", r.getValue()))))
                 .reduce(Function.identity(), Function::andThen)
                 .apply(string);
     }

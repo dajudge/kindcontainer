@@ -15,9 +15,8 @@ import static org.awaitility.Awaitility.await;
 public class NodePortTest extends BaseKindContainerTest {
     @Test
     public void exposes_node_port() {
-        final String ns = K8S.withClient(TestUtils::createNewNamespace);
         final Pod pod = K8S.withClient(client -> {
-            return createTestPod(client, ns);
+            return createSimplePod(client, namespace);
         });
         K8S.withClient(client -> {
             client.services().create(new ServiceBuilder()
