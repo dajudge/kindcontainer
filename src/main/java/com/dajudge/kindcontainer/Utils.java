@@ -60,7 +60,11 @@ final class Utils {
             if (result != null) {
                 return result;
             }
-            Thread.yield();
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         throw new IllegalStateException(errorMessage.get());
     }
