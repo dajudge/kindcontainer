@@ -29,17 +29,6 @@ final class Utils {
         return bos.toByteArray();
     }
 
-    @NotNull
-    private static ByteArrayOutputStream readStream(final InputStream is) throws IOException {
-        final byte[] buffer = new byte[1024];
-        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        int read;
-        while ((read = is.read(buffer)) > 0) {
-            bos.write(buffer, 0, read);
-        }
-        return bos;
-    }
-
     static String loadResource(final String name) {
         final InputStream stream = Utils.class.getClassLoader().getResourceAsStream(name);
         try (final InputStream is = stream) {
@@ -67,5 +56,9 @@ final class Utils {
             }
         }
         throw new IllegalStateException(errorMessage.get());
+    }
+
+    public static String indent(final String prefix, final String string) {
+        return string.replaceAll("(?m)^", prefix);
     }
 }
