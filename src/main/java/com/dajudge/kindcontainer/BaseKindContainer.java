@@ -289,10 +289,10 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
 
     public void pullImage(final String imageName) {
         final String fullImageName = fullNameOf(imageName);
-        LOG.info("Pulling fullImageName: {}", fullImageName);
+        LOG.info("Pulling image: {}", fullImageName);
         try {
             final Container.ExecResult result = execInContainer("ctr", "-n", "k8s.io",
-                    "fullImageName", "pull", fullImageName
+                    "image", "pull", fullImageName
             );
             if (result.getExitCode() != 0) {
                 LOG.error("Image pull returned non-zero exit code: {}", result.getExitCode());
@@ -301,7 +301,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
                 throw new AssertionError("Image pull returned non-zero exit code: " + result.getExitCode());
             }
         } catch (final IOException | InterruptedException e) {
-            throw new AssertionError("Failed to pull fullImageName " + fullImageName, e);
+            throw new AssertionError("Failed to pull image " + fullImageName, e);
         }
     }
 
