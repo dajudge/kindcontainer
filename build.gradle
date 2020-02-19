@@ -10,17 +10,19 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
 def versionDetails = versionDetails()
 version versionDetails.isCleanTag && gitVersion().startsWith("release/")
         ? gitVersion().substring("release/".length())
-        : "${System.currentTimeMillis()}-SNAPSHOT"
+        : System.currentTimeMillis() + "-SNAPSHOT"
 println "Build version $version"
 
+apply from: "publishing.gradle"
 if (!version.endsWith("-SNAPSHOT")) {
-    apply from: "publishing.gradle"
+    apply from: "bintray.gradle"
 } else {
     println "Not a tag build. Not configuring bintray."
 }
@@ -34,4 +36,10 @@ dependencies {
     testImplementation "com.squareup.okhttp3:okhttp:4.3.1"
 
     testRuntimeOnly "ch.qos.logback:logback-classic:1.2.3"
+}
+
+test {
+    testLogging {
+        showStandardStreams = true
+    }
 }
