@@ -8,6 +8,7 @@ import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeCondition;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -84,7 +85,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
         try {
             final String containerIpAddress = getInternalIpAddress(this);
-            LOG.info("Container IP address: {}", containerIpAddress);
+            LOG.info("Container internal IP address: {}", containerIpAddress);
             final Map<String, String> params = new HashMap<String, String>() {{
                 put(".NodeIp", containerIpAddress);
                 put(".PodSubnet", podSubnet);
@@ -243,7 +244,9 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         final Map<String, Object> kubeConfigMap = YAML.load(kubeConfig);
         final List<Map<String, Object>> clusters = (List<Map<String, Object>>) kubeConfigMap.get("clusters");
         final Map<String, Object> firstCluster = clusters.iterator().next();
-        firstCluster.put("server", "https://" + getContainerIpAddress() + ":" + getMappedPort(6443));
+        final Map<String, Object> cluster = (Map<String, Object>) firstCluster.get("cluster");
+        final String newServerEndpoint = "https://" + getContainerIpAddress() + ":" + getMappedPort(6443);
+        cluster.put("server", newServerEndpoint);
         return YAML.dump(kubeConfigMap);
     }
 
@@ -262,10 +265,15 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         final Predicate<Node> nodeIsReady = node -> node.getStatus().getConditions().stream()
                 .anyMatch(isReadyStatus);
         return () -> withClient(client -> {
-            return client.nodes().list().getItems().stream()
-                    .filter(nodeIsReady)
-                    .findAny()
-                    .orElse(null);
+            try {
+                return client.nodes().list().getItems().stream()
+                        .filter(nodeIsReady)
+                        .findAny()
+                        .orElse(null);
+            } catch (final KubernetesClientException e) {
+                LOG.debug("Failed to list ready nodes", e);
+                return null;
+            }
         });
     }
 
