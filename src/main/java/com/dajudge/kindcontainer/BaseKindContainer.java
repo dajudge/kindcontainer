@@ -32,6 +32,7 @@ import static java.lang.String.join;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.testcontainers.containers.BindMode.READ_ONLY;
 
@@ -84,12 +85,21 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
         try {
-            final String containerIpAddress = getInternalIpAddress(this);
-            LOG.info("Container internal IP address: {}", containerIpAddress);
+            final String containerInternalIpAddress = getInternalIpAddress(this);
+            LOG.info("Container internal IP address: {}", containerInternalIpAddress);
+            LOG.info("Container external IP address: {}", getContainerIpAddress());
+            final Set<String> subjectAlternativeNames = new HashSet<>(asList(
+                    containerInternalIpAddress,
+                    "127.0.0.1",
+                    "localhost",
+                    getContainerIpAddress()
+            ));
+            LOG.debug("SANs for Kube-API server certificate: {}", subjectAlternativeNames);
             final Map<String, String> params = new HashMap<String, String>() {{
-                put(".NodeIp", containerIpAddress);
+                put(".NodeIp", containerInternalIpAddress);
                 put(".PodSubnet", podSubnet);
                 put(".ServiceSubnet", serviceSubnet);
+                put(".CertSANs", subjectAlternativeNames.stream().map(san -> "\"" + san + "\"").collect(joining(",")));
             }};
             exec("mkdir", "-p", CONTAINTER_WORKDIR);
             kubeadmInit(params);
@@ -231,12 +241,17 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         }
     }
 
-    public String kubeconfig() {
-        final String adminKubeConfig = copyFileFromContainer(
-                "/etc/kubernetes/admin.conf",
-                Utils::readString
-        );
-        return patchKubeConfig(adminKubeConfig);
+    private String kubeconfig;
+
+    public synchronized String kubeconfig() {
+        if (kubeconfig == null) {
+            final String adminKubeConfig = copyFileFromContainer(
+                    "/etc/kubernetes/admin.conf",
+                    Utils::readString
+            );
+            kubeconfig = patchKubeConfig(adminKubeConfig);
+        }
+        return kubeconfig;
     }
 
     @SuppressWarnings("unchecked")
@@ -246,6 +261,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         final Map<String, Object> firstCluster = clusters.iterator().next();
         final Map<String, Object> cluster = (Map<String, Object>) firstCluster.get("cluster");
         final String newServerEndpoint = "https://" + getContainerIpAddress() + ":" + getMappedPort(6443);
+        LOG.info("Creating kubeconfig with server {} instead of {}", newServerEndpoint, cluster.get("server"));
         cluster.put("server", newServerEndpoint);
         return YAML.dump(kubeConfigMap);
     }
