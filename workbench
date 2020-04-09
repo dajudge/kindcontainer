@@ -21,6 +21,8 @@ else
 fi
 
 docker run --rm \
+    --net host \
+    --pid host \
     $WB_MOUNTS \
     -v $HOME:$HOME \
     -v /var/run/docker.sock:/var/run/docker.sock \
