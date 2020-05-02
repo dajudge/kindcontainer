@@ -29,7 +29,7 @@ if (!version.endsWith("-SNAPSHOT")) {
 
 dependencies {
     api "io.fabric8:kubernetes-client:4.6.4"
-    api "org.testcontainers:testcontainers:1.12.3"
+    api "org.testcontainers:testcontainers:1.14.1"
 
     testImplementation "junit:junit:4.13"
     testImplementation "org.awaitility:awaitility:4.0.2"
