@@ -32,6 +32,8 @@ import static java.lang.String.join;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
+import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.testcontainers.containers.BindMode.READ_ONLY;
@@ -44,6 +46,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.97.0.0/12";
+    private List<String> certs = emptyList();
 
     public BaseKindContainer() {
         this("kindest/node:v1.17.0");
@@ -70,6 +73,11 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
                 .withExposedPorts();
     }
 
+    public T withCaCerts(final Collection<String> certs) {
+        this.certs = new ArrayList<>(certs);
+        return self();
+    }
+
     @Override
     public T withExposedPorts(final Integer... ports) {
         final HashSet<Integer> exposedPorts = new HashSet<>(asList(ports));
@@ -85,6 +93,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
         try {
+            updateCaCertificates();
             final String containerInternalIpAddress = getInternalIpAddress(this);
             LOG.info("Container internal IP address: {}", containerInternalIpAddress);
             LOG.info("Container external IP address: {}", getContainerIpAddress());
@@ -109,6 +118,16 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         } catch (final Exception e) {
             throw new RuntimeException("Failed to initialize node", e);
         }
+    }
+
+    private void updateCaCertificates() throws IOException, InterruptedException {
+        if (certs.isEmpty()) {
+            return;
+        }
+        for (int i = 0; i < certs.size(); i++) {
+            writeContainerFile(certs.get(i), "/usr/local/share/ca-certificates/custom-cert-" + i + ".crt");
+        }
+        exec(singletonList("update-ca-certificates"));
     }
 
     private void untaintNode() throws IOException, InterruptedException {
