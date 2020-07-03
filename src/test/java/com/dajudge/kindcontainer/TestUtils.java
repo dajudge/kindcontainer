@@ -8,11 +8,14 @@ import org.testcontainers.shaded.okhttp3.Request;
 import org.testcontainers.shaded.okhttp3.Response;
 import org.testcontainers.shaded.okhttp3.ResponseBody;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.concurrent.Callable;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.UUID.randomUUID;
 
 final class TestUtils {
@@ -82,5 +85,23 @@ final class TestUtils {
                 .inNamespace(pod.getMetadata().getNamespace())
                 .withName(pod.getMetadata().getName())
                 .get().getStatus().getPhase());
+    }
+
+    public static String stringResource(final String s) {
+        try (final InputStream is = TestUtils.class.getClassLoader().getResourceAsStream(s)) {
+            return readString(is);
+        } catch (final IOException e) {
+            throw new RuntimeException("Failed to read string resource: " + s, e);
+        }
+    }
+
+    public static String readString(final InputStream is) throws IOException {
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
+        final byte[] buffer = new byte[1024];
+        int read;
+        while ((read = is.read(buffer)) > 0) {
+            bos.write(buffer, 0, read);
+        }
+        return new String(bos.toByteArray(), UTF_8);
     }
 }
