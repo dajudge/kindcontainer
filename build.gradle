@@ -2,8 +2,8 @@ plugins {
     id "java"
     id "java-library"
     id "maven-publish"
-    id "com.jfrog.bintray" version "1.8.4"
     id "com.palantir.git-version" version "0.12.2"
+    id "com.github.hierynomus.license" version "0.16.1"
 }
 
 sourceCompatibility = 1.8
@@ -20,16 +20,12 @@ version versionDetails.isCleanTag && gitVersion().startsWith("release/")
         : System.currentTimeMillis() + "-SNAPSHOT"
 println "Build version $version"
 
-apply from: "publishing.gradle"
-if (!version.endsWith("-SNAPSHOT")) {
-    apply from: "bintray.gradle"
-} else {
-    println "Not a tag build. Not configuring bintray."
-}
+apply from: "${rootProject.projectDir}/publishing.gradle"
+apply from: "${rootProject.projectDir}/signing.gradle"
 
 dependencies {
-    api "io.fabric8:kubernetes-client:4.6.4"
-    api "org.testcontainers:testcontainers:1.14.1"
+    api "io.fabric8:kubernetes-client:5.5.0"
+    api "org.testcontainers:testcontainers:1.15.3"
 
     testImplementation "junit:junit:4.13"
     testImplementation "org.awaitility:awaitility:4.0.2"
@@ -38,8 +34,22 @@ dependencies {
     testRuntimeOnly "ch.qos.logback:logback-classic:1.2.3"
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+
 test {
+    // suppress completely stupid stacktrace dump by fabric8
+    systemProperty "kubernetes.disable.autoConfig", "true"
+
+
     testLogging {
         showStandardStreams = true
     }
+}
+
+license {
+    header file("${project.rootDir}/HEADER")
 }
