@@ -1,3 +1,18 @@
+/*
+Copyright 2020-2021 Alex Stockinger
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ */
 package com.dajudge.kindcontainer;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
@@ -9,7 +24,6 @@ import io.fabric8.kubernetes.api.model.NodeCondition;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
@@ -44,12 +58,14 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     private static final Yaml YAML = new Yaml();
     private static final String CONTAINER_NAME = "kindcontainer-control-plane";
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
+    private static final String DEFAULT_IMAGE = "kindest/node:v1.21.1";
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.97.0.0/12";
+    private int startupTimeoutSecs = 300;
     private List<String> certs = emptyList();
 
     public BaseKindContainer() {
-        this("kindest/node:v1.17.0");
+        this(DEFAULT_IMAGE);
     }
 
     public BaseKindContainer(final String image) {
@@ -63,14 +79,19 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
                             .withVolumes(varVolume)
                             .withBinds(new Bind("kindcontainer-volume", varVolume, true));
                 })
+                .withEnv("KUBECONFIG", "/etc/kubernetes/admin.conf")
                 .withPrivilegedMode(true)
                 .withFileSystemBind("/lib/modules", "/lib/modules", READ_ONLY)
                 .withTmpFs(new HashMap<String, String>() {{
                     put("/run", "rw");
                     put("/tmp", "rw");
-                    put("/var", "rw");
                 }})
                 .withExposedPorts();
+    }
+
+    public T withNodeReadyTimeout(final int seconds) {
+        startupTimeoutSecs = seconds;
+        return self();
     }
 
     public T withCaCerts(final Collection<String> certs) {
@@ -82,7 +103,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     public T withExposedPorts(final Integer... ports) {
         final HashSet<Integer> exposedPorts = new HashSet<>(asList(ports));
         exposedPorts.add(6443);
-        return super.withExposedPorts(exposedPorts.toArray(new Integer[exposedPorts.size()]));
+        return super.withExposedPorts(exposedPorts.toArray(new Integer[0]));
     }
 
     @Override
@@ -114,7 +135,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
             kubeadmInit(params);
             installCni(params);
             installStorage();
-            untaintNode();
+            untaintMasterNode();
         } catch (final Exception e) {
             throw new RuntimeException("Failed to initialize node", e);
         }
@@ -130,7 +151,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         exec(singletonList("update-ca-certificates"));
     }
 
-    private void untaintNode() throws IOException, InterruptedException {
+    private void untaintMasterNode() throws IOException, InterruptedException {
         kubectl("taint", "node", CONTAINER_NAME, "node-role.kubernetes.io/master:NoSchedule-");
     }
 
@@ -141,10 +162,10 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         );
         exec(asList(
                 "kubeadm", "init",
-                // preflight errors are expected, in particular for swap being enabled
-                "--ignore-preflight-errors=all",
+                "--skip-phases=preflight",
                 // specify our generated config file
                 "--config=" + kubeadmConfig,
+                "--skip-token-print",
                 // increase verbosity for debugging
                 "--v=6"
         ));
@@ -163,7 +184,6 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         kubectl("apply", "-f", cniManifest);
     }
 
-    @NotNull
     private String templateContainerFile(
             final String sourceFileName,
             final String destFileName,
@@ -172,7 +192,6 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         return writeContainerFile(template(readContainerFile(sourceFileName), params), destFileName);
     }
 
-    @NotNull
     private String readContainerFile(final String fname) {
         return copyFileFromContainer(fname, Utils::readString);
     }
@@ -198,7 +217,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     private void exec(final List<String> exec) throws IOException, InterruptedException {
         final String cmdString = join(" ", exec);
         LOG.info("Executing command: {}", cmdString);
-        final ExecResult execResult = execInContainer(exec.toArray(new String[exec.size()]));
+        final ExecResult execResult = execInContainer(exec.toArray(new String[0]));
         final int exitCode = execResult.getExitCode();
         if (exitCode == 0) {
             LOG.debug("\"{}\" exited with status code {}", cmdString, exitCode);
@@ -213,7 +232,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     }
 
     private static String kubeadmConfigFor(final Map<String, String> replacements) {
-        return template(loadResource("kubeadm.conf"), replacements);
+        return template(loadResource("kubeadm.yaml"), replacements);
     }
 
     private static String template(String string, final Map<String, String> replacements) {
@@ -223,8 +242,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
                 .apply(string);
     }
 
-    @NotNull
-    private static String getInternalIpAddress(final BaseKindContainer container) {
+    private static String getInternalIpAddress(final BaseKindContainer<?> container) {
         return waitUntilNotNull(() -> {
                     final Map<String, ContainerNetwork> networks = container.getContainerInfo()
                             .getNetworkSettings().getNetworks();
@@ -234,14 +252,18 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
                     return networks.get("bridge").getIpAddress();
                 },
                 CONTAINER_IP_TIMEOUT_MSECS,
-                () -> "Failed to determine container IP address"
+                "Waiting for bridge network to receive IP address...",
+                () -> new IllegalStateException("Failed to determine container IP address")
         );
     }
 
-    @NotNull
     public KubernetesClient client() {
+        return client(kubeconfig());
+    }
+
+    private KubernetesClient client(final String kubeconfig) {
         try {
-            return new DefaultKubernetesClient(fromKubeconfig(kubeconfig()));
+            return new DefaultKubernetesClient(fromKubeconfig(kubeconfig));
         } catch (final IOException e) {
             throw new RuntimeException("Failed to extract kubeconfig from test container", e);
         }
@@ -255,7 +277,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     }
 
     public <R> R withClient(final Function<KubernetesClient, R> callable) {
-        try (final @NotNull KubernetesClient client = client()) {
+        try (final KubernetesClient client = client()) {
             return callable.apply(client);
         }
     }
@@ -268,9 +290,25 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
                     "/etc/kubernetes/admin.conf",
                     Utils::readString
             );
-            kubeconfig = patchKubeConfig(adminKubeConfig);
+            if (tryKubeconfig(adminKubeConfig)) {
+                kubeconfig = adminKubeConfig;
+                LOG.info("Original kubeconfig works");
+            } else {
+                LOG.info("Original kubeconfig doesn't seem to work, creating patched version...");
+                kubeconfig = patchKubeConfig(adminKubeConfig);
+            }
         }
         return kubeconfig;
+    }
+
+    private boolean tryKubeconfig(final String kubeconfig) {
+        try (final KubernetesClient client = client(kubeconfig)) {
+            client.nodes().list();
+            return true;
+        } catch (final Exception e) {
+            LOG.trace("Kubeconfig check failed", e);
+            return false;
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -280,7 +318,8 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         final Map<String, Object> firstCluster = clusters.iterator().next();
         final Map<String, Object> cluster = (Map<String, Object>) firstCluster.get("cluster");
         final String newServerEndpoint = "https://" + getContainerIpAddress() + ":" + getMappedPort(6443);
-        LOG.info("Creating kubeconfig with server {} instead of {}", newServerEndpoint, cluster.get("server"));
+        final String server = cluster.get("server").toString();
+        LOG.info("Creating kubeconfig with server {} instead of {}", newServerEndpoint, server);
         cluster.put("server", newServerEndpoint);
         return YAML.dump(kubeConfigMap);
     }
@@ -288,12 +327,41 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     @Override
     public void start() {
         super.start();
-        LOG.info("Waiting for a node to become ready...");
-        final Node readyNode = waitUntilNotNull(findReadyNode(), 300000, () -> "No node became ready");
+        final InspectContainerResponse containerInfo = getContainerInfo();
+        LOG.debug("Bridge: {}", containerInfo.getNetworkSettings().getBridge());
+        LOG.debug("Networks: ");
+        containerInfo.getNetworkSettings().getNetworks().forEach((k, v) ->
+                LOG.debug("  {}: {} gw {}", k, v.getIpAddress(), v.getGateway()));
+        LOG.debug("Ports: ");
+        containerInfo.getNetworkSettings().getPorts().getBindings().forEach((e, b) ->
+                LOG.debug("  {} -> {}", e, asList(b)));
+        final Node readyNode = waitUntilNotNull(
+                findReadyNode(),
+                startupTimeoutSecs * 1000,
+                "Waiting for a node to become ready...",
+                () -> {
+                    dumpDebuggingInfo();
+                    return new IllegalStateException("No node became ready");
+                }
+        );
         LOG.info("Node ready: {}", readyNode.getMetadata().getName());
     }
 
-    @NotNull
+    private void dumpDebuggingInfo() {
+        withClient(client -> {
+            client.nodes().list().getItems().forEach(it -> LOG.info("{}", it));
+            client.pods().list().getItems().forEach(it -> LOG.info("{}", it));
+            client.pods().list().getItems().stream()
+                    .filter(it -> it.getMetadata().getName().startsWith("kindnet-"))
+                    .forEach(it -> {
+                        final String podLog = client.pods()
+                                .inNamespace(it.getMetadata().getNamespace())
+                                .withName(it.getMetadata().getName()).getLog();
+                        LOG.info("{}/{}:\n{}", it.getMetadata().getNamespace(), it.getMetadata().getName(), podLog);
+                    });
+        });
+    }
+
     private Supplier<Node> findReadyNode() {
         final Predicate<NodeCondition> isReadyStatus = cond ->
                 "Ready".equals(cond.getType()) && "True".equals(cond.getStatus());
@@ -302,6 +370,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         return () -> withClient(client -> {
             try {
                 return client.nodes().list().getItems().stream()
+                        .peek(it -> LOG.trace("{} -> {}", it.getMetadata().getName(), it.getStatus().getConditions()))
                         .filter(nodeIsReady)
                         .findAny()
                         .orElse(null);

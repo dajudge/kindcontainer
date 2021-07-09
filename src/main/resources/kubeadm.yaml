@@ -1,5 +1,21 @@
+# Copyright 2020-2021 Alex Stockinger
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 apiServer:
   certSANs: [{{ .CertSANs }}]
+  extraArgs:
+    runtime-config: ""
 apiVersion: kubeadm.k8s.io/v1beta2
 clusterName: kind
 controlPlaneEndpoint: {{ .NodeIp }}:6443
@@ -7,7 +23,7 @@ controllerManager:
   extraArgs:
     enable-hostpath-provisioner: "true"
 kind: ClusterConfiguration
-kubernetesVersion: v1.17.0
+kubernetesVersion: v1.21.1
 networking:
   podSubnet: {{ .PodSubnet }}
   serviceSubnet: {{ .ServiceSubnet }}
@@ -16,16 +32,18 @@ scheduler:
 ---
 apiVersion: kubeadm.k8s.io/v1beta2
 bootstrapTokens:
-- token: abcdef.0123456789abcdef
+  - token: abcdef.0123456789abcdef
 kind: InitConfiguration
 localAPIEndpoint:
   advertiseAddress: {{ .NodeIp }}
   bindPort: 6443
 nodeRegistration:
-  criSocket: /run/containerd/containerd.sock
+  criSocket: unix:///run/containerd/containerd.sock
   kubeletExtraArgs:
     fail-swap-on: "false"
     node-ip: {{ .NodeIp }}
+    node-labels: ""
+    provider-id: kind://docker/kind/kindcontainer-control-plane
 ---
 apiVersion: kubeadm.k8s.io/v1beta2
 controlPlane:
@@ -39,12 +57,15 @@ discovery:
     unsafeSkipCAVerification: true
 kind: JoinConfiguration
 nodeRegistration:
-  criSocket: /run/containerd/containerd.sock
+  criSocket: unix:///run/containerd/containerd.sock
   kubeletExtraArgs:
     fail-swap-on: "false"
     node-ip: {{ .NodeIp }}
+    node-labels: ""
+    provider-id: kind://docker/kind/kindcontainer-control-plane
 ---
 apiVersion: kubelet.config.k8s.io/v1beta1
+cgroupDriver: cgroupfs
 evictionHard:
   imagefs.available: 0%
   nodefs.available: 0%
@@ -53,4 +74,9 @@ imageGCHighThresholdPercent: 100
 kind: KubeletConfiguration
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
+conntrack:
+  maxPerCore: 0
+iptables:
+  minSyncPeriod: 1s
 kind: KubeProxyConfiguration
+mode: iptables

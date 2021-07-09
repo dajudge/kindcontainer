@@ -1,6 +1,6 @@
 #! /bin/sh
 
-DIR="$(cd "$(dirname "$0")"; pwd)";
+DIR="$(cd "$(dirname "$0")"; pwd)"
 
 IMG=$(docker build -q $DIR/.workbench)
 
@@ -12,18 +12,9 @@ else
     WB_MODE=""
 fi
 
-if [ -z "$USER" ]; then
-  echo "Setting root user"
-  USER="root"
-  WB_MOUNTS=""
-else
-  WB_MOUNTS="-v /etc/passwd:/etc/passwd -v /etc/group:/etc/group"
-fi
-
 docker run --rm \
-    --net host \
-    --pid host \
-    $WB_MOUNTS \
+    -v /etc/passwd:/etc/passwd \
+    -v /etc/group:/etc/group \
     -v $HOME:$HOME \
     -v /var/run/docker.sock:/var/run/docker.sock \
     $WB_MODE $IMG sudo -u ${USER} -E sh -c "cd $DIR; $CMD"

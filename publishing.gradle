@@ -1,7 +1,9 @@
+apply plugin: "maven-publish"
+
 def scmUrl = 'https://github.com/dajudge/kindcontainer'
 def pomConfig = {
     licenses {
-        license {
+        delegate.license {
             name "The Apache Software License, Version 2.0"
             url "http://www.apache.org/licenses/LICENSE-2.0.txt"
             distribution "repo"
@@ -20,20 +22,37 @@ def pomConfig = {
     }
 }
 
+def projectGroupId = "com.dajudge.kindcontainer"
+def projectArtifactId = project.name
+def projectVersion = project.version
 publishing {
     publications {
-        KindcontainerPublication(MavenPublication) {
+        Proxybase(MavenPublication) {
             from components.java
-            groupId "com.dajudge.kindcontainer"
-            artifactId 'kindcontainer'
-            version rootProject.version
+            groupId projectGroupId
+            artifactId projectArtifactId
+            version projectVersion
             pom.withXml {
                 def root = asNode()
-                root.appendNode('description', 'kindcontainer')
-                root.appendNode('name', 'kindcontainer')
+                root.appendNode('description', "kindcontainer-${projectArtifactId} v${projectVersion}")
+                root.appendNode('name', "kindcontainer-${projectArtifactId}")
                 root.appendNode('url', scmUrl)
                 root.children().last() + pomConfig
             }
         }
     }
+    repositories {
+        maven {
+            name = "OSSRH"
+            setUrl("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2")
+            credentials {
+                username = System.getenv("OSSRH_USER") ?: "wrong"
+                password = System.getenv("OSSRH_PASSWORD") ?: "credentials"
+            }
+        }
+    }
+}
+
+publishToMavenLocal.doFirst {
+    println "Publishing to maven local: $projectGroupId:$projectArtifactId:$projectVersion"
 }

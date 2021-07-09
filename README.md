@@ -1,3 +1,6 @@
+[![CI](https://github.com/dajudge/kafkaproxy/actions/workflows/build.yaml/badge.svg)](https://github.com/dajudge/kindcontainer/actions/workflows/build.yaml)
+
+
 kindcontainer
 ---
 A Java-based [testcontainers.org](https://www.testcontainers.org/) container implementation that uses 
