@@ -11,7 +11,7 @@ clusters for unit/integration testing.
 ### Add dependency
 First you need to add the kindcontainer dependency to your build. Kindcontainer is available on maven central.
 #### Maven
-Add the bintray repo and the kindcontainer dependency:
+Add the kindcontainer dependency:
 ```xml
 <project>
     <dependencies>
@@ -26,7 +26,7 @@ Add the bintray repo and the kindcontainer dependency:
 ```
 
 #### Gradle
-Add the bintray repo and the kindcontainer dependency:
+Add the kindcontainer dependency:
 ```groovy
 repositories {
     // Since 0.0.13 kindcontainer is on maven central
