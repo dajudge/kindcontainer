@@ -1,5 +1,5 @@
 [![CI](https://github.com/dajudge/kafkaproxy/actions/workflows/build.yaml/badge.svg)](https://github.com/dajudge/kindcontainer/actions/workflows/build.yaml)
-
+[![Maven central](https://img.shields.io/maven-central/v/com.dajudge.kindcontainer/kindcontainer)](https://search.maven.org/artifact/com.dajudge.kindcontainer/kindcontainer)
 
 kindcontainer
 ---
@@ -9,25 +9,16 @@ clusters for unit/integration testing.
 
 ## Usage
 ### Add dependency
-First you need to add the kindcontainer dependency to your build. Kindcontainer is available as a [bintray repository](https://bintray.com/dajudge/kindcontainer/kindcontainer).
+First you need to add the kindcontainer dependency to your build. Kindcontainer is available on maven central.
 #### Maven
 Add the bintray repo and the kindcontainer dependency:
 ```xml
 <project>
-    <!-- kindcontainer is not on maven central, yet -->
-    <repositories>
-        <repository>
-            <id>bintray-kindcontainer</id>
-            <name>The kindcontainer bintray repo</name>
-            <url>https://dl.bintray.com/dajudge/kindcontainer</url>
-        </repository>
-    </repositories>
-
     <dependencies>
         <dependency>
             <groupId>com.dajudge.kindcontainer</groupId>
             <artifactId>kindcontainer</artifactId>
-            <version>${kindcontainer.version}</version>
+            <version>0.0.13</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -38,16 +29,12 @@ Add the bintray repo and the kindcontainer dependency:
 Add the bintray repo and the kindcontainer dependency:
 ```groovy
 repositories {
-    // kindcontainer is not on Maven central, yet
-    maven {
-        url "https://dl.bintray.com/dajudge/kindcontainer"
-    }
-    // But it has some transitive dependencies there
+    // Since 0.0.13 kindcontainer is on maven central
     mavenCentral()
 }
 
 dependencies {
-    testImplementation "com.dajudge.kindcontainer:kindcontainer:${kindcontainerVersion}"
+    testImplementation "com.dajudge.kindcontainer:kindcontainer:0.0.13"
 }
 ```
 ### Use in JUnit test
