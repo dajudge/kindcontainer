@@ -44,9 +44,33 @@ public class SomeKubernetesTest {
     public static final KindContainer KUBE = new KindContainer();
 
     @Test
-    public void test_something() {
+    public void verify_node_is_present() {
         // Do something useful with the fabric8 client it returns!
-        System.out.println(KUBE.client());
+        try(final KuberntesClient client = KUBE.client()) {
+            assertEquals(1, client.nodes().list().getItems().size());
+        }
+    }
+}
+```
+
+### API-Server-only testing
+If you don't need a full-fledged Kubernetes distribution for your testing, using the `ApiServerContainer`
+might be an option for you that shaves off a lot of the startup overhead of the `KindContainer`. The
+`ApiServerContainer` only starts an etcd instance and a Kubernetes API-Server, can be more than enough
+e.g. if all you want to test is if your custom operator handles it's CRDs properly or creates the required
+objects in the control plane.
+
+```java
+public class SomeControlPlaneTest {
+    @ClassRule
+    public static final ApiServerContainer KUBE = new ApiServerContainer();
+
+    @Test
+    public void verify_no_node_is_present() {
+        // Do something useful with the fabric8 client it returns!
+        try(final KuberntesClient client = KUBE.client()) {
+            assertTrue(client.nodes().list().getItems().isEmpty());
+        }
     }
 }
 ```
