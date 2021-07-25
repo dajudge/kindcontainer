@@ -18,15 +18,17 @@ package com.dajudge.kindcontainer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.images.builder.Transferable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 import static java.lang.System.currentTimeMillis;
 import static java.lang.Thread.sleep;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 final class Utils {
@@ -85,5 +87,9 @@ final class Utils {
 
     public static String indent(final String prefix, final String string) {
         return string.replaceAll("(?m)^", prefix);
+    }
+
+    static void writeAsciiFile(final GenericContainer<?> container, final String text, final String path) {
+        container.copyFileToContainer(Transferable.of(text.getBytes(US_ASCII)), path);
     }
 }
