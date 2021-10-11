@@ -86,7 +86,8 @@ public class ApiServerContainer extends BusyBoxContainer<ApiServerContainer> {
             final String apiServerIpAddress = getApiServerIpAddress();
             final KeyStoreWrapper apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
                     new GeneralName(GeneralName.iPAddress, apiServerIpAddress),
-                    new GeneralName(GeneralName.dNSName, "localhost")
+                    new GeneralName(GeneralName.dNSName, "localhost"),
+                    new GeneralName(GeneralName.iPAddress, "127.0.0.1")
             ));
             final KeyStoreWrapper etcdClientKeyPair = etcd.newClientKeypair("CN=API Server");
             writeAsciiFile(this, etcdClientKeyPair.getCertificatePem(), ETCD_CLIENT_CERT);
