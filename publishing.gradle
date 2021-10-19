@@ -27,7 +27,7 @@ def projectArtifactId = project.name
 def projectVersion = project.version
 publishing {
     publications {
-        Proxybase(MavenPublication) {
+        KindContainer(MavenPublication) {
             from components.java
             groupId projectGroupId
             artifactId projectArtifactId
