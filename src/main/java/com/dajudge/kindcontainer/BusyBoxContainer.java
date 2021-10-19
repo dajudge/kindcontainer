@@ -18,6 +18,7 @@ package com.dajudge.kindcontainer;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.images.builder.dockerfile.statement.SingleArgumentStatement;
+import org.testcontainers.utility.Base58;
 
 import java.util.List;
 
@@ -40,7 +41,8 @@ abstract class BusyBoxContainer<T extends GenericContainer<T>> extends GenericCo
     }
 
     private static ImageFromDockerfile buildImageWithBusybox(final String image, final String[] commands) {
-        return new ImageFromDockerfile().withDockerfileFromBuilder(builder -> builder
+        return new ImageFromDockerfile("localhost/apiservercontainer:"+ Base58.randomString(16).toLowerCase(), false)
+                .withDockerfileFromBuilder(builder -> builder
                 .withStatement(new SingleArgumentStatement("FROM", "busybox as builder"))
                 .run("mkdir -p /tmp/busybox")
                 .run(linkBusyBox(asList(commands)))
