@@ -1,8 +1,10 @@
 apply plugin: "signing"
 
-signing {
-    def signingKey = System.getenv("SIGNING_KEY") ?: ""
-    def signingPwd = System.getenv("SIGNING_PASSWORD") ?: ""
-    useInMemoryPgpKeys(signingKey, signingPwd)
-    sign publishing.publications
+if(System.getenv("SIGNING_KEY")) {
+    signing {
+        def signingKey = System.getenv("SIGNING_KEY") ?: ""
+        def signingPwd = System.getenv("SIGNING_PASSWORD") ?: ""
+        useInMemoryPgpKeys(signingKey, signingPwd)
+        sign publishing.publications
+    }
 }
