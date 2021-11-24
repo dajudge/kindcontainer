@@ -79,7 +79,7 @@ public class ApiServerContainer extends BusyBoxContainer<ApiServerContainer> {
                 .withExposedPorts(6443);
     }
 
-    public KubernetesClient getClient() {
+    public DefaultKubernetesClient getClient() {
         return new DefaultKubernetesClient(config);
     }
 

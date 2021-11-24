@@ -257,23 +257,23 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
         );
     }
 
-    public KubernetesClient client() {
+    public DefaultKubernetesClient client() {
         return client(kubeconfig());
     }
 
-    private KubernetesClient client(final String kubeconfig) {
+    private DefaultKubernetesClient client(final String kubeconfig) {
         return new DefaultKubernetesClient(fromKubeconfig(kubeconfig));
     }
 
-    public void withClient(final Consumer<KubernetesClient> callable) {
+    public void withClient(final Consumer<DefaultKubernetesClient> callable) {
         withClient(client -> {
             callable.accept(client);
             return null;
         });
     }
 
-    public <R> R withClient(final Function<KubernetesClient, R> callable) {
-        try (final KubernetesClient client = client()) {
+    public <R> R withClient(final Function<DefaultKubernetesClient, R> callable) {
+        try (final DefaultKubernetesClient client = client()) {
             return callable.apply(client);
         }
     }
