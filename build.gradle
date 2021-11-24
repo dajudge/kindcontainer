@@ -28,7 +28,7 @@ dependencies {
     api 'org.testcontainers:testcontainers:1.16.2'
 
     testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.awaitility:awaitility:4.1.0'
+    testImplementation 'org.awaitility:awaitility:4.1.1'
     testImplementation 'com.squareup.okhttp3:okhttp:4.9.2'
 
     testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.6'
