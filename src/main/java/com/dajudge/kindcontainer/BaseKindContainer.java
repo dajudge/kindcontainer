@@ -262,11 +262,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     }
 
     private KubernetesClient client(final String kubeconfig) {
-        try {
-            return new DefaultKubernetesClient(fromKubeconfig(kubeconfig));
-        } catch (final IOException e) {
-            throw new RuntimeException("Failed to extract kubeconfig from test container", e);
-        }
+        return new DefaultKubernetesClient(fromKubeconfig(kubeconfig));
     }
 
     public void withClient(final Consumer<KubernetesClient> callable) {
