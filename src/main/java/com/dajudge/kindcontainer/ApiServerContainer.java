@@ -54,7 +54,11 @@ public class ApiServerContainer extends BusyBoxContainer<ApiServerContainer> {
     private final Config config = Config.empty();
 
     public ApiServerContainer() {
-        super(API_SERVER_IMAGE);
+        this(API_SERVER_IMAGE);
+    }
+
+    public ApiServerContainer(final String apiServerImage) {
+        super(apiServerImage);
         etcd = new EtcdContainer();
         this
                 .withCreateContainerCmdModifier(cmd -> {
