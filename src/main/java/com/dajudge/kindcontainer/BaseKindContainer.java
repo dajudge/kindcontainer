@@ -60,7 +60,7 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
     private static final String DEFAULT_IMAGE = "kindest/node:v1.21.1";
     private String podSubnet = "10.244.0.0/16";
-    private String serviceSubnet = "10.97.0.0/12";
+    private String serviceSubnet = "10.245.0.0/16";
     private int startupTimeoutSecs = 300;
     private List<String> certs = emptyList();
 
