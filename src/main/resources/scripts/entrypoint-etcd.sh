@@ -13,10 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -eu
 
-echo "Waiting for container IP address..."
+echo "Waiting for container IP address: $IP_ADDRESS_PATH"
 while [ ! -f "$IP_ADDRESS_PATH" ]; do
-  sleep .1
+  read -t 0.1 < /dev/stdout || true
 done
-CONTAINER_IP="$(cat $IP_ADDRESS_PATH)" exec "$@"
+while read line; do
+  IP_ADDRESS="$line"
+done <"$IP_ADDRESS_PATH"
+CONTAINER_IP="$IP_ADDRESS" exec "$@"

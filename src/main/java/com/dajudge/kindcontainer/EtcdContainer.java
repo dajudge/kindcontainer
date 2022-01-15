@@ -19,6 +19,7 @@ import com.dajudge.kindcontainer.pki.CertAuthority;
 import com.dajudge.kindcontainer.pki.KeyStoreWrapper;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
+import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
 
 import java.util.Map;
@@ -28,7 +29,7 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static org.testcontainers.utility.MountableFile.forClasspathResource;
 
-class EtcdContainer extends BusyBoxContainer<EtcdContainer> {
+class EtcdContainer extends GenericContainer<EtcdContainer> {
     private static final String DOCKER_BASE_PATH = "/docker";
     private static final String RUN_SCRIPT_PATH = DOCKER_BASE_PATH + "/run-etcd.sh";
     private static final String ENTRYPOINT_PATH = DOCKER_BASE_PATH + "/entrypoint-etcd.sh";
@@ -53,7 +54,8 @@ class EtcdContainer extends BusyBoxContainer<EtcdContainer> {
                 .withEnv("IP_ADDRESS_PATH", IP_ADDRESS_PATH)
                 .withCopyFileToContainer(forClasspathResource("scripts/entrypoint-etcd.sh", 755), ENTRYPOINT_PATH)
                 .withCopyFileToContainer(forClasspathResource("scripts/run-etcd.sh", 755), RUN_SCRIPT_PATH)
-                .withExposedPorts(ETCD_PORT);
+                .withExposedPorts(ETCD_PORT)
+                .waitingFor(new WaitForExternalPortStrategy(ETCD_PORT));
     }
 
     @Override
@@ -66,7 +68,7 @@ class EtcdContainer extends BusyBoxContainer<EtcdContainer> {
         writeAsciiFile(this, etcdKeypair.getCertificatePem(), SERVER_CERT_PATH);
         writeAsciiFile(this, etcdKeypair.getPrivateKeyPem(), SERVER_KEY_PATH);
         writeAsciiFile(this, etcdCa.getCaKeyStore().getCertificatePem(), SERVER_CACERTS_PATH);
-        writeAsciiFile(this, etcdIpAddress, IP_ADDRESS_PATH);
+        writeAsciiFile(this, String.format("%s\n", etcdIpAddress), IP_ADDRESS_PATH);
     }
 
     public String getEtcdIpAddress() {
