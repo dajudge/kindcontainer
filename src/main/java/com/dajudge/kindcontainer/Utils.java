@@ -24,6 +24,8 @@ import org.testcontainers.images.builder.Transferable;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.function.Supplier;
 
 import static java.lang.System.currentTimeMillis;
@@ -91,5 +93,13 @@ final class Utils {
 
     static void writeAsciiFile(final GenericContainer<?> container, final String text, final String path) {
         container.copyFileToContainer(Transferable.of(text.getBytes(US_ASCII)), path);
+    }
+
+    static String resolve(final String hostname) {
+        try {
+            return InetAddress.getByName(hostname).getHostAddress();
+        } catch (final UnknownHostException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
