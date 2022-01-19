@@ -24,7 +24,7 @@ apply from: "${rootProject.projectDir}/publishing.gradle"
 apply from: "${rootProject.projectDir}/signing.gradle"
 
 dependencies {
-    api 'io.fabric8:kubernetes-client:5.10.1'
+    api 'io.fabric8:kubernetes-client:5.11.2'
     api 'org.testcontainers:testcontainers:1.16.2'
 
     testImplementation 'junit:junit:4.13.2'
