@@ -24,14 +24,14 @@ apply from: "${rootProject.projectDir}/publishing.gradle"
 apply from: "${rootProject.projectDir}/signing.gradle"
 
 dependencies {
-    api 'io.fabric8:kubernetes-client:5.10.1'
+    api 'io.fabric8:kubernetes-client:5.11.2'
     api 'org.testcontainers:testcontainers:1.16.3'
 
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.awaitility:awaitility:4.1.1'
-    testImplementation 'com.squareup.okhttp3:okhttp:4.9.2'
+    testImplementation 'com.squareup.okhttp3:okhttp:4.9.3'
 
-    testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.7'
+    testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.10'
 }
 
 java {
