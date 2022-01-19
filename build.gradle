@@ -31,7 +31,7 @@ dependencies {
     testImplementation 'org.awaitility:awaitility:4.1.1'
     testImplementation 'com.squareup.okhttp3:okhttp:4.9.2'
 
-    testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.7'
+    testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.10'
 }
 
 java {
