@@ -16,5 +16,18 @@ limitations under the License.
 
 package com.dajudge.kindcontainer;
 
+import org.testcontainers.utility.DockerImageName;
+
 public class KindContainer extends BaseKindContainer<KindContainer> {
+    public KindContainer() {
+        super();
+    }
+
+    public KindContainer(final String image) {
+        super(image);
+    }
+
+    public KindContainer(final DockerImageName image) {
+        super(image);
+    }
 }

@@ -31,6 +31,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
+import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.util.*;
@@ -69,6 +70,10 @@ public class BaseKindContainer<T extends BaseKindContainer<T>> extends GenericCo
     }
 
     public BaseKindContainer(final String image) {
+        this(DockerImageName.parse(image));
+    }
+
+    public BaseKindContainer(final DockerImageName image) {
         super(image);
         this.withStartupTimeout(ofSeconds(300))
                 .withCreateContainerCmdModifier(cmd -> {
