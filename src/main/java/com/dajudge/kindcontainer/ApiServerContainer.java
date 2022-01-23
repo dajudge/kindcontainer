@@ -24,6 +24,7 @@ import org.jetbrains.annotations.NotNull;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.shaded.com.google.common.io.Files;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
+import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
 import java.io.IOException;
@@ -63,6 +64,10 @@ public class ApiServerContainer extends GenericContainer<ApiServerContainer> {
     }
 
     public ApiServerContainer(final String apiServerImage) {
+        this(DockerImageName.parse(apiServerImage));
+    }
+
+    public ApiServerContainer(final DockerImageName apiServerImage) {
         super(apiServerImage);
         etcd = new EtcdContainer();
         this
