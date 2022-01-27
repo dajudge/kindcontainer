@@ -17,21 +17,21 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import static com.dajudge.kindcontainer.TestUtils.stringResource;
-import static java.lang.Runtime.getRuntime;
 import static java.util.Collections.singletonList;
 
-abstract class BaseKindContainerTest {
-    static final KindContainer<?> K8S = createContainer();
-    final String namespace = K8S.withClient(TestUtils::createNewNamespace);
+public abstract class BaseKindContainerTest {
+    // This container follows the singleton pattern demonstrated
+    // in https://www.testcontainers.org/test_framework_integration/manual_lifecycle_control/
+    static final KindContainer<?> K8S = new KindContainer<>()
+            .withExposedPorts(30000)
+            .withNodeReadyTimeout(60)
+            .waitingFor(NullWaitStrategy.INSTANCE)
+            .withCaCerts(singletonList(stringResource("test.crt")));
 
-    private static KindContainer<?> createContainer() {
-        final KindContainer<?> container = new KindContainer<>()
-                .withExposedPorts(30000)
-                .withNodeReadyTimeout(60)
-                .waitingFor(NullWaitStrategy.INSTANCE)
-                .withCaCerts(singletonList(stringResource("test.crt")));
-        container.start();
-        getRuntime().addShutdownHook(new Thread(container::stop));
-        return container;
+    static {
+        K8S.start();
+        Runtime.getRuntime().addShutdownHook(new Thread(K8S::close));
     }
+
+    final String namespace = K8S.withClient(TestUtils::createNewNamespace);
 }
