@@ -27,6 +27,7 @@ import io.fabric8.kubernetes.client.KubernetesClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
+import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
@@ -50,7 +51,6 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.testcontainers.containers.BindMode.READ_ONLY;
-import static org.testcontainers.containers.Network.newNetwork;
 
 public class KindContainer<T extends KindContainer<T>> extends KubernetesContainer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(KindContainer.class);
@@ -76,6 +76,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
     public KindContainer(final DockerImageName image) {
         super(image);
+        final Network.NetworkImpl network = createNetwork();
         this.withStartupTimeout(ofSeconds(300))
                 .withCreateContainerCmdModifier(cmd -> {
                     final Volume varVolume = new Volume("/var/lib/containerd");
@@ -92,7 +93,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                     put("/run", "rw");
                     put("/tmp", "rw");
                 }})
-                .withNetwork(newNetwork())
+                .withNetwork(network)
                 .withNetworkAliases(INTERNAL_HOSTNAME)
                 .withExposedPorts();
     }
