@@ -94,7 +94,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     @Override
     public String getInternalHostname() {
-        return INTERNAL_HOST_HOSTNAME;
+        return INTERNAL_HOSTNAME;
     }
 
     @Override
