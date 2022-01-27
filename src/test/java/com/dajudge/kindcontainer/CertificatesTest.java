@@ -24,7 +24,7 @@ import static org.junit.Assert.assertTrue;
 public class CertificatesTest extends BaseKindContainerTest {
     @Test
     public void adds_custom_certificate() {
-        final String allCerts = K8S.copyFileFromContainer(
+        final String allCerts = KIND.copyFileFromContainer(
                 "/etc/ssl/certs/ca-certificates.crt",
                 TestUtils::readString
         );

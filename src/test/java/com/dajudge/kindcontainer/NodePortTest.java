@@ -31,10 +31,10 @@ import static org.awaitility.Awaitility.await;
 public class NodePortTest extends BaseKindContainerTest {
     @Test
     public void exposes_node_port() {
-        final Pod pod = K8S.withClient(client -> {
+        final Pod pod = KIND.withClient(client -> {
             return createSimplePod(client, namespace);
         });
-        K8S.withClient(client -> {
+        KIND.withClient(client -> {
             client.services().create(new ServiceBuilder()
                     .withNewMetadata()
                     .withName("nginx")
@@ -55,7 +55,7 @@ public class NodePortTest extends BaseKindContainerTest {
                     .build());
             await("testpod")
                     .timeout(ofSeconds(300))
-                    .until(TestUtils.http("http://localhost:" + K8S.getMappedPort(30000)));
+                    .until(TestUtils.http("http://localhost:" + KIND.getMappedPort(30000)));
 
         });
     }
