@@ -17,9 +17,12 @@ package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.pki.CertAuthority;
 import com.dajudge.kindcontainer.pki.KeyStoreWrapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.dockerjava.api.command.CreateContainerCmd;
+import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.utils.Serialization;
 import org.jetbrains.annotations.NotNull;
 import org.testcontainers.containers.Network;
 import org.testcontainers.shaded.com.google.common.io.Files;
@@ -206,6 +209,39 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     private String base64(final String str) {
         return Base64.getEncoder().encodeToString(str.getBytes(US_ASCII));
+    }
+
+    @Override
+    public String getInternalKubeconfig() {
+        try {
+            final String url = format("https://%s:%d", INTERNAL_HOSTNAME, INTERNAL_API_SERVER_PORT);
+            return Serialization.yamlMapper().writeValueAsString(new io.fabric8.kubernetes.api.model.ConfigBuilder()
+                    .withClusters(new NamedClusterBuilder()
+                            .withName("kindcontainer")
+                            .withCluster(new ClusterBuilder()
+                                    .withServer(url)
+                                    .withCertificateAuthorityData(config.getCaCertData())
+                                    .build())
+                            .build())
+                    .withCurrentContext("kindcontainer")
+                    .withContexts(new NamedContextBuilder()
+                            .withName("kindcontainer")
+                            .withNewContext()
+                            .withCluster("kindcontainer")
+                            .withUser("kindcontainer")
+                            .endContext()
+                            .build())
+                    .withUsers(new NamedAuthInfoBuilder()
+                            .withName("kindcontainer")
+                            .withUser(new AuthInfoBuilder()
+                                    .withClientCertificateData(config.getClientCertData())
+                                    .withClientKeyData(config.getClientKeyData())
+                                    .build())
+                            .build())
+                    .build());
+        } catch (final JsonProcessingException e) {
+            throw new RuntimeException("Failed to serialize kubeconfig");
+        }
     }
 
     @Override

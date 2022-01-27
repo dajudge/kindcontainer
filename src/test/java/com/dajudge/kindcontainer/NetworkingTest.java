@@ -20,9 +20,11 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.images.builder.Transferable;
 
 import java.io.IOException;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
@@ -34,7 +36,7 @@ public class NetworkingTest extends BaseCommonTest {
 
     @Test
     public void can_connect_internally() {
-        try (final GenericContainer<?> curl = createContainer()) {
+        try (final GenericContainer<?> curl = createCmdlineContainer("curlimages/curl:7.81.0")) {
             curl.start();
             try {
                 final String url = String.format("https://%s:%d", k8s.getInternalHostname(), k8s.getInternalPort());
@@ -46,8 +48,23 @@ public class NetworkingTest extends BaseCommonTest {
         }
     }
 
-    private GenericContainer<?> createContainer() {
-        return new GenericContainer<>("curlimages/curl:7.81.0")
+    @Test
+    public void can_kubectl() {
+        try (final GenericContainer<?> kubectl = createCmdlineContainer("bitnami/kubectl:1.22.6")) {
+            kubectl.start();
+            try {
+                final Transferable kubeconfig = Transferable.of(k8s.getInternalKubeconfig().getBytes(UTF_8));
+                kubectl.copyFileToContainer(kubeconfig, "/tmp/kubeconfig");
+                final Container.ExecResult result = kubectl.execInContainer("kubectl", "--kubeconfig", "/tmp/kubeconfig", "get", "nodes");
+                assertEquals(0, result.getExitCode());
+            } catch (final IOException | InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        }
+    }
+
+    private GenericContainer<?> createCmdlineContainer(final String image) {
+        return new GenericContainer<>(image)
                 .withCreateContainerCmdModifier(cmd -> {
                     cmd.withEntrypoint("sh", "-c", "trap 'echo signal;exit 0' SIGTERM; while : ; do sleep 1 ; done");
                 })
