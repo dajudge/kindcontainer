@@ -15,6 +15,7 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.helm.Helm3Container;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -24,6 +25,8 @@ import java.util.function.Function;
 
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
     public abstract DefaultKubernetesClient getClient();
+
+    private Helm3Container<?> helm3;
 
     public KubernetesContainer(final DockerImageName dockerImageName) {
         super(dockerImageName);
@@ -47,4 +50,23 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     public abstract int getInternalPort();
 
     public abstract String getInternalKubeconfig();
+
+    public synchronized Helm3Container<?> helm3() {
+        if (helm3 == null) {
+            helm3 = new Helm3Container<>(this::getInternalKubeconfig, getNetwork());
+            helm3.start();
+        }
+        return helm3;
+    }
+
+    @Override
+    public void stop() {
+        try {
+            if (helm3 != null) {
+                helm3.stop();
+            }
+        } finally {
+            super.stop();
+        }
+    }
 }
