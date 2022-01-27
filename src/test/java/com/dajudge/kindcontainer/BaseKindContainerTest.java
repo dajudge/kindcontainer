@@ -21,11 +21,11 @@ import static java.lang.Runtime.getRuntime;
 import static java.util.Collections.singletonList;
 
 abstract class BaseKindContainerTest {
-    static final KindContainer K8S = createContainer();
+    static final KindContainer<?> K8S = createContainer();
     final String namespace = K8S.withClient(TestUtils::createNewNamespace);
 
-    private static KindContainer createContainer() {
-        final KindContainer container = new KindContainer()
+    private static KindContainer<?> createContainer() {
+        final KindContainer<?> container = new KindContainer<>()
                 .withExposedPorts(30000)
                 .withNodeReadyTimeout(60)
                 .waitingFor(NullWaitStrategy.INSTANCE)

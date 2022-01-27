@@ -23,7 +23,7 @@ import static org.junit.Assert.assertTrue;
 
 public class ApiServerContainerTest {
     @ClassRule
-    public static ApiServerContainer K8S = new ApiServerContainer();
+    public static ApiServerContainer<?> K8S = new ApiServerContainer<>();
 
     @Test
     public void starts_apiserver() {
