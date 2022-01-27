@@ -20,6 +20,7 @@ import com.dajudge.kindcontainer.pki.KeyStoreWrapper;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
 
 import java.util.Map;
@@ -41,9 +42,10 @@ class EtcdContainer extends GenericContainer<EtcdContainer> {
     private static final String ETCD_IMAGE = "k8s.gcr.io/etcd:3.4.13-0";
     private final CertAuthority etcdCa = new CertAuthority(System::currentTimeMillis, "CN=etcd CA");
 
-    EtcdContainer() {
+    EtcdContainer(final Network network) {
         super(ETCD_IMAGE);
         this
+                .withNetwork(network)
                 .withCreateContainerCmdModifier(cmd -> {
                     cmd.withEntrypoint(ENTRYPOINT_PATH);
                     cmd.withCmd(RUN_SCRIPT_PATH);

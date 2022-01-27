@@ -27,7 +27,6 @@ import io.fabric8.kubernetes.client.KubernetesClientException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
@@ -35,7 +34,6 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -52,6 +50,7 @@ import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.testcontainers.containers.BindMode.READ_ONLY;
+import static org.testcontainers.containers.Network.newNetwork;
 
 public class KindContainer<T extends KindContainer<T>> extends KubernetesContainer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(KindContainer.class);
@@ -60,6 +59,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final String CONTAINER_NAME = "kindcontainer-control-plane";
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
     private static final String DEFAULT_IMAGE = "kindest/node:v1.21.1";
+    private static final String INTERNAL_HOSTNAME = "kindcontainer";
+    private static final int INTERNAL_API_SERVER_PORT = 6443;
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
     private int startupTimeoutSecs = 300;
@@ -91,7 +92,19 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                     put("/run", "rw");
                     put("/tmp", "rw");
                 }})
+                .withNetwork(newNetwork())
+                .withNetworkAliases(INTERNAL_HOSTNAME)
                 .withExposedPorts();
+    }
+
+    @Override
+    public String getInternalHostname() {
+        return INTERNAL_HOSTNAME;
+    }
+
+    @Override
+    public int getInternalPort() {
+        return INTERNAL_API_SERVER_PORT;
     }
 
     public T withNodeReadyTimeout(final int seconds) {
@@ -107,7 +120,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     @Override
     public T withExposedPorts(final Integer... ports) {
         final HashSet<Integer> exposedPorts = new HashSet<>(asList(ports));
-        exposedPorts.add(6443);
+        exposedPorts.add(INTERNAL_API_SERVER_PORT);
         return super.withExposedPorts(exposedPorts.toArray(new Integer[0]));
     }
 
@@ -127,7 +140,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                     containerInternalIpAddress,
                     "127.0.0.1",
                     "localhost",
-                    getContainerIpAddress()
+                    getContainerIpAddress(),
+                    INTERNAL_HOSTNAME
             ));
             LOG.debug("SANs for Kube-API server certificate: {}", subjectAlternativeNames);
             final Map<String, String> params = new HashMap<String, String>() {{
@@ -251,14 +265,14 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         return waitUntilNotNull(() -> {
                     final Map<String, ContainerNetwork> networks = container.getContainerInfo()
                             .getNetworkSettings().getNetworks();
-                    if (!networks.containsKey("bridge")) {
+                    if (networks.isEmpty()) {
                         return null;
                     }
-                    return networks.get("bridge").getIpAddress();
+                    return networks.entrySet().iterator().next().getValue().getIpAddress();
                 },
                 CONTAINER_IP_TIMEOUT_MSECS,
-                "Waiting for bridge network to receive IP address...",
-                () -> new IllegalStateException("Failed to determine container IP address")
+                "Waiting for network to receive internal IP address...",
+                () -> new IllegalStateException("Failed to determine internal IP address")
         );
     }
 
@@ -306,7 +320,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         final List<Map<String, Object>> clusters = (List<Map<String, Object>>) kubeConfigMap.get("clusters");
         final Map<String, Object> firstCluster = clusters.iterator().next();
         final Map<String, Object> cluster = (Map<String, Object>) firstCluster.get("cluster");
-        final String newServerEndpoint = "https://" + getContainerIpAddress() + ":" + getMappedPort(6443);
+        final String newServerEndpoint = "https://" + getContainerIpAddress() + ":" + getMappedPort(INTERNAL_API_SERVER_PORT);
         final String server = cluster.get("server").toString();
         LOG.info("Creating kubeconfig with server {} instead of {}", newServerEndpoint, server);
         cluster.put("server", newServerEndpoint);

@@ -22,6 +22,7 @@ import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.jetbrains.annotations.NotNull;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.Network;
 import org.testcontainers.shaded.com.google.common.io.Files;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
 import org.testcontainers.utility.DockerImageName;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.asList;
+import static org.testcontainers.containers.Network.newNetwork;
 import static org.testcontainers.utility.MountableFile.forHostPath;
 
 public class ApiServerContainer<T extends ApiServerContainer<T>> extends KubernetesContainer<T> {
@@ -54,6 +56,8 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     private static final String DOCKER_BASE_PATH = "/docker";
     private static final String IP_ADDRESS_PATH = DOCKER_BASE_PATH + "/ip.txt";
     private static final String ETCD_HOSTNAME_PATH = DOCKER_BASE_PATH + "/etcd.txt";
+    private static final String INTERNAL_HOSTNAME = "apiserver";
+    private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final File tempDir = Files.createTempDir();
     private final CertAuthority apiServerCa = new CertAuthority(System::currentTimeMillis, "CN=API Server CA");
     private final EtcdContainer etcd;
@@ -69,7 +73,8 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     public ApiServerContainer(final DockerImageName apiServerImage) {
         super(apiServerImage);
-        etcd = new EtcdContainer();
+        final Network network = newNetwork();
+        etcd = new EtcdContainer(network);
         this
                 .withCreateContainerCmdModifier(this::createContainerCmdModifier)
                 .withEnv("ETCD_CLIENT_KEY", ETCD_CLIENT_KEY)
@@ -81,8 +86,20 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .withEnv("API_SERVER_PUBKEY", API_SERVER_PUBKEY)
                 .withEnv("IP_ADDRESS_PATH", IP_ADDRESS_PATH)
                 .withEnv("ETCD_HOSTNAME_PATH", ETCD_HOSTNAME_PATH)
-                .withExposedPorts(6443)
-                .waitingFor(new WaitForExternalPortStrategy(6443));
+                .withExposedPorts(INTERNAL_API_SERVER_PORT)
+                .waitingFor(new WaitForExternalPortStrategy(INTERNAL_API_SERVER_PORT))
+                .withNetwork(network)
+                .withNetworkAliases(INTERNAL_HOSTNAME);
+    }
+
+    @Override
+    public String getInternalHostname() {
+        return INTERNAL_HOSTNAME;
+    }
+
+    @Override
+    public int getInternalPort() {
+        return INTERNAL_API_SERVER_PORT;
     }
 
     private void createContainerCmdModifier(final CreateContainerCmd cmd) {
@@ -114,7 +131,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
             put("requestheader-group-headers", "X-Remote-Group");
             put("requestheader-username-headers", "X-Remote-User");
             put("runtime-config", "");
-            put("secure-port", "6443");
+            put("secure-port", String.format("%d", INTERNAL_API_SERVER_PORT));
             put("service-cluster-ip-range", "10.96.0.0/16");
         }}.entrySet().stream()
                 .map(e -> format("--%s=%s", e.getKey(), e.getValue()))
@@ -150,7 +167,8 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
         final KeyStoreWrapper apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
                 new GeneralName(GeneralName.iPAddress, Utils.resolve(getHost())),
                 new GeneralName(GeneralName.dNSName, "localhost"),
-                new GeneralName(GeneralName.iPAddress, "127.0.0.1")
+                new GeneralName(GeneralName.iPAddress, "127.0.0.1"),
+                new GeneralName(GeneralName.dNSName, INTERNAL_HOSTNAME)
         ));
         final KeyStoreWrapper etcdClientKeyPair = etcd.newClientKeypair("CN=API Server");
         final Path apiServerCert = writeTempFile("apiServer.crt", apiServerKeyPair.getCertificatePem());
@@ -181,7 +199,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
         config.setCaCertData(base64(apiServerCa.getCaKeyStore().getCertificatePem()));
         config.setClientCertData(base64(apiServerKeyPair.getCertificatePem()));
         config.setClientKeyData(base64(apiServerKeyPair.getPrivateKeyPem()));
-        config.setMasterUrl(format("https://%s:%d", getContainerIpAddress(), getMappedPort(6443)));
+        config.setMasterUrl(format("https://%s:%d", getContainerIpAddress(), getMappedPort(INTERNAL_API_SERVER_PORT)));
         config.setConnectionTimeout(10000);
         config.setRequestTimeout(60000);
     }
