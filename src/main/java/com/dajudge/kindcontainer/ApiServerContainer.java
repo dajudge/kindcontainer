@@ -21,7 +21,6 @@ import com.github.dockerjava.api.command.CreateContainerCmd;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.jetbrains.annotations.NotNull;
-import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.shaded.com.google.common.io.Files;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
@@ -36,10 +35,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.dajudge.kindcontainer.Utils.createNetwork;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.asList;
-import static org.testcontainers.containers.Network.newNetwork;
 import static org.testcontainers.utility.MountableFile.forHostPath;
 
 public class ApiServerContainer<T extends ApiServerContainer<T>> extends KubernetesContainer<T> {
@@ -73,7 +72,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     public ApiServerContainer(final DockerImageName apiServerImage) {
         super(apiServerImage);
-        final Network network = newNetwork();
+        final Network network = createNetwork();
         etcd = new EtcdContainer(network);
         this
                 .withCreateContainerCmdModifier(this::createContainerCmdModifier)
