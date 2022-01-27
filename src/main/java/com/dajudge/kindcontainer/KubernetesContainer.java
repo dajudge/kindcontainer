@@ -41,4 +41,8 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
             return callable.apply(client);
         }
     }
+
+    public abstract String getInternalHostname();
+
+    public abstract int getInternalPort();
 }
