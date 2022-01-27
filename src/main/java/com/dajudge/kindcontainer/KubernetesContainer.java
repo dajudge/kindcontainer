@@ -16,21 +16,27 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public interface KubernetesContainer {
-    DefaultKubernetesClient getClient();
+public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
+    public abstract DefaultKubernetesClient getClient();
 
-    default void withClient(final Consumer<DefaultKubernetesClient> callable) {
+    public KubernetesContainer(final DockerImageName dockerImageName) {
+        super(dockerImageName);
+    }
+
+    public void withClient(final Consumer<DefaultKubernetesClient> callable) {
         withClient(client -> {
             callable.accept(client);
             return null;
         });
     }
 
-    default <R> R withClient(final Function<DefaultKubernetesClient, R> callable) {
+    public <R> R withClient(final Function<DefaultKubernetesClient, R> callable) {
         try (final DefaultKubernetesClient client = getClient()) {
             return callable.apply(client);
         }

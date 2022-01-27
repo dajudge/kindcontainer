@@ -53,7 +53,7 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.testcontainers.containers.BindMode.READ_ONLY;
 
-public class KindContainer<T extends KindContainer<T>> extends GenericContainer<T> implements KubernetesContainer {
+public class KindContainer<T extends KindContainer<T>> extends KubernetesContainer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(KindContainer.class);
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
     private static final Yaml YAML = new Yaml();
