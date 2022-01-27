@@ -40,7 +40,7 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.asList;
 import static org.testcontainers.utility.MountableFile.forHostPath;
 
-public class ApiServerContainer<T extends ApiServerContainer<T>> extends GenericContainer<T> {
+public class ApiServerContainer<T extends ApiServerContainer<T>> extends GenericContainer<T> implements KubernetesContainer {
     private static final String API_SERVER_IMAGE = "k8s.gcr.io/kube-apiserver:v1.21.1";
     private static final String PKI_BASEDIR = "/etc/kubernetes/pki";
     private static final String ETCD_PKI_BASEDIR = PKI_BASEDIR + "/etcd";
@@ -125,6 +125,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Generic
         cmd.withCmd(cmdLine.toArray(new String[]{}));
     }
 
+    @Override
     public DefaultKubernetesClient getClient() {
         return new DefaultKubernetesClient(config);
     }
