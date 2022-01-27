@@ -19,11 +19,14 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import com.github.dockerjava.api.model.Volume;
+import io.fabric8.kubernetes.api.model.Config;
 import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeCondition;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.internal.KubeConfigUtils;
+import io.fabric8.kubernetes.client.utils.Serialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
@@ -42,6 +45,7 @@ import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.Utils.*;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
+import static java.lang.String.format;
 import static java.lang.String.join;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
@@ -106,6 +110,18 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     @Override
     public int getInternalPort() {
         return INTERNAL_API_SERVER_PORT;
+    }
+
+    @Override
+    public String getInternalKubeconfig() {
+        try {
+            final Config config = KubeConfigUtils.parseConfigFromString(getExternalKubeconfig());
+            final String url = format("https://%s:%d", INTERNAL_HOSTNAME, INTERNAL_API_SERVER_PORT);
+            config.getClusters().get(0).getCluster().setServer(url);
+            return Serialization.yamlMapper().writeValueAsString(config);
+        } catch (final IOException e) {
+            throw new RuntimeException("Failed to serialize kubeconfig");
+        }
     }
 
     public T withNodeReadyTimeout(final int seconds) {
@@ -279,7 +295,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
     @Override
     public DefaultKubernetesClient getClient() {
-        return client(kubeconfig());
+        return client(getExternalKubeconfig());
     }
 
     private DefaultKubernetesClient client(final String kubeconfig) {
@@ -288,7 +304,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
     private String kubeconfig;
 
-    public synchronized String kubeconfig() {
+    public synchronized String getExternalKubeconfig() {
         if (kubeconfig == null) {
             final String adminKubeConfig = copyFileFromContainer(
                     "/etc/kubernetes/admin.conf",

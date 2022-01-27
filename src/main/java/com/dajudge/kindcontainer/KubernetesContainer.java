@@ -45,4 +45,6 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     public abstract String getInternalHostname();
 
     public abstract int getInternalPort();
+
+    public abstract String getInternalKubeconfig();
 }
