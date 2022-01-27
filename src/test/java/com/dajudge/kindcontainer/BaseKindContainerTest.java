@@ -33,5 +33,5 @@ public abstract class BaseKindContainerTest {
         Runtime.getRuntime().addShutdownHook(new Thread(KIND::close));
     }
 
-    final String namespace = KIND.withClient(TestUtils::createNewNamespace);
+    String namespace = KIND.withClient(TestUtils::createNewNamespace);
 }
