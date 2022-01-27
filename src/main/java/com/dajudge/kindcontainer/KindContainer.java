@@ -53,7 +53,7 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.testcontainers.containers.BindMode.READ_ONLY;
 
-public class KindContainer<T extends KindContainer<T>> extends GenericContainer<T> {
+public class KindContainer<T extends KindContainer<T>> extends GenericContainer<T> implements KubernetesContainer {
     private static final Logger LOG = LoggerFactory.getLogger(KindContainer.class);
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
     private static final Yaml YAML = new Yaml();
@@ -262,25 +262,13 @@ public class KindContainer<T extends KindContainer<T>> extends GenericContainer<
         );
     }
 
-    public DefaultKubernetesClient client() {
+    @Override
+    public DefaultKubernetesClient getClient() {
         return client(kubeconfig());
     }
 
     private DefaultKubernetesClient client(final String kubeconfig) {
         return new DefaultKubernetesClient(fromKubeconfig(kubeconfig));
-    }
-
-    public void withClient(final Consumer<DefaultKubernetesClient> callable) {
-        withClient(client -> {
-            callable.accept(client);
-            return null;
-        });
-    }
-
-    public <R> R withClient(final Function<DefaultKubernetesClient, R> callable) {
-        try (final DefaultKubernetesClient client = client()) {
-            return callable.apply(client);
-        }
     }
 
     private String kubeconfig;
