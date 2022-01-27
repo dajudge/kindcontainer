@@ -23,11 +23,11 @@ import static org.junit.Assert.assertTrue;
 
 public class ApiServerContainerTest {
     @ClassRule
-    public static ApiServerContainer<?> K8S = new ApiServerContainer<>();
+    public static ApiServerContainer<?> API_SERVER = new ApiServerContainer<>();
 
     @Test
     public void starts_apiserver() {
-        try (final KubernetesClient client = K8S.getClient()) {
+        try (final KubernetesClient client = API_SERVER.getClient()) {
             assertTrue(client.nodes().list().getItems().isEmpty());
         }
     }

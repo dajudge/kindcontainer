@@ -22,16 +22,16 @@ import static java.util.Collections.singletonList;
 public abstract class BaseKindContainerTest {
     // This container follows the singleton pattern demonstrated
     // in https://www.testcontainers.org/test_framework_integration/manual_lifecycle_control/
-    static final KindContainer<?> K8S = new KindContainer<>()
+    static final KindContainer<?> KIND = new KindContainer<>()
             .withExposedPorts(30000)
             .withNodeReadyTimeout(60)
             .waitingFor(NullWaitStrategy.INSTANCE)
             .withCaCerts(singletonList(stringResource("test.crt")));
 
     static {
-        K8S.start();
-        Runtime.getRuntime().addShutdownHook(new Thread(K8S::close));
+        KIND.start();
+        Runtime.getRuntime().addShutdownHook(new Thread(KIND::close));
     }
 
-    final String namespace = K8S.withClient(TestUtils::createNewNamespace);
+    final String namespace = KIND.withClient(TestUtils::createNewNamespace);
 }
