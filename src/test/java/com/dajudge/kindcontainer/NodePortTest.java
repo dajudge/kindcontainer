@@ -31,10 +31,10 @@ import static org.awaitility.Awaitility.await;
 public class NodePortTest extends BaseKindContainerTest {
     @Test
     public void exposes_node_port() {
-        final Pod pod = KIND.withClient(client -> {
+        final Pod pod = KIND.runWithClient(client -> {
             return createSimplePod(client, namespace);
         });
-        KIND.withClient(client -> {
+        KIND.runWithClient(client -> {
             client.services().create(new ServiceBuilder()
                     .withNewMetadata()
                     .withName("nginx")

@@ -16,15 +16,11 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.exception.ExecutionException;
-import io.fabric8.kubernetes.api.model.NamespaceBuilder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.IOException;
-import java.util.UUID;
-
-import static com.dajudge.kindcontainer.TestUtils.createNewNamespace;
 
 @RunWith(Parameterized.class)
 public class Helm3Test extends BaseCommonTest {

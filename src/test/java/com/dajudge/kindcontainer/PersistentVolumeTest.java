@@ -30,15 +30,15 @@ public class PersistentVolumeTest extends BaseKindContainerTest {
 
     @Test
     public void can_start_pod_with_pvc() {
-        final PersistentVolumeClaim claim = KIND.withClient(client -> {
+        final PersistentVolumeClaim claim = KIND.runWithClient(client -> {
             return client.persistentVolumeClaims().inNamespace(namespace).create(buildClaim());
         });
-        final Pod pod = KIND.withClient(client -> {
+        final Pod pod = KIND.runWithClient(client -> {
             return client.pods().inNamespace(namespace).create(buildPod(claim));
         });
         await("testpod")
                 .timeout(ofSeconds(300))
-                .until(() -> KIND.withClient(client -> {
+                .until(() -> KIND.runWithClient(client -> {
                     return isRunning(client, pod);
                 }));
     }

@@ -31,7 +31,7 @@ public class KubectlTest {
 
     @Test
     public void can_apply_manifest() {
-        K8S.withClient(client -> {
+        K8S.runWithClient(client -> {
             assertNotNull(client.configMaps().inNamespace("configmap1").withName("configmap1").get());
         });
     }
