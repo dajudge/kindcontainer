@@ -24,15 +24,17 @@ import org.junit.Test;
 
 import java.util.HashMap;
 
-import static com.dajudge.kindcontainer.TestUtils.*;
+import static com.dajudge.kindcontainer.StaticContainers.KIND;
+import static com.dajudge.kindcontainer.TestUtils.createNewNamespace;
+import static com.dajudge.kindcontainer.TestUtils.createSimplePod;
 import static java.time.Duration.ofSeconds;
 import static org.awaitility.Awaitility.await;
 
-public class NodePortTest extends BaseKindContainerTest {
+public class NodePortTest {
     @Test
     public void exposes_node_port() {
         final Pod pod = KIND.runWithClient(client -> {
-            return createSimplePod(client, namespace);
+            return createSimplePod(client, createNewNamespace(client));
         });
         KIND.runWithClient(client -> {
             client.services().create(new ServiceBuilder()

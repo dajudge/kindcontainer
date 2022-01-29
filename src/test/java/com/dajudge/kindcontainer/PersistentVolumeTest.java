@@ -17,16 +17,25 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import io.fabric8.kubernetes.api.model.*;
+import org.junit.Before;
 import org.junit.Test;
 
 import java.util.HashMap;
 
+import static com.dajudge.kindcontainer.StaticContainers.KIND;
 import static com.dajudge.kindcontainer.TestUtils.isRunning;
 import static com.dajudge.kindcontainer.TestUtils.randomIdentifier;
 import static java.time.Duration.ofSeconds;
 import static org.awaitility.Awaitility.await;
 
-public class PersistentVolumeTest extends BaseKindContainerTest {
+public class PersistentVolumeTest {
+
+    private String namespace;
+
+    @Before
+    public void before() {
+        namespace = KIND.runWithClient(TestUtils::createNewNamespace);
+    }
 
     @Test
     public void can_start_pod_with_pvc() {

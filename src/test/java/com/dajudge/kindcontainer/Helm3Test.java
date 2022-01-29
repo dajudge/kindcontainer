@@ -15,27 +15,23 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer;
 
-import com.dajudge.kindcontainer.exception.ExecutionException;
+import org.junit.ClassRule;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
-import java.io.IOException;
+public class Helm3Test {
 
-@RunWith(Parameterized.class)
-public class Helm3Test extends BaseCommonTest {
-
-    public Helm3Test(final KubernetesContainer<?> k8s) {
-        super(k8s);
-    }
+    @ClassRule
+    public static ApiServerContainer<?> K8S = new ApiServerContainer<>()
+            .withHelm3(helm -> {
+                helm.repo.add.run("mittwald", "https://helm.mittwald.de");
+                helm.repo.update.run();
+                helm.install
+                        .namespace("kubernetes-replicator")
+                        .createNamespace()
+                        .run("kubernetes-replicator", "mittwald/kubernetes-replicator");
+            });
 
     @Test
-    public void can_install_something() throws IOException, ExecutionException, InterruptedException {
-        k8s.helm3().repo.add.run("mittwald", "https://helm.mittwald.de");
-        k8s.helm3().repo.update.run();
-        k8s.helm3().install
-                .namespace("kubernetes-replicator")
-                .createNamespace()
-                .run("kubernetes-replicator", "mittwald/kubernetes-replicator");
+    public void can_install_something() {
     }
 }

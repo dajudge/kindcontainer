@@ -60,7 +60,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final Logger LOG = LoggerFactory.getLogger(KindContainer.class);
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
     private static final Yaml YAML = new Yaml();
-    private static final String CONTAINER_NAME = "kindcontainer-control-plane";
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
     private static final String DEFAULT_IMAGE = "kindest/node:v1.21.1";
     private static final String INTERNAL_HOSTNAME = "kindcontainer";
@@ -83,12 +82,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         final Network.NetworkImpl network = createNetwork();
         this.withStartupTimeout(ofSeconds(300))
                 .withCreateContainerCmdModifier(cmd -> {
-                    final Volume varVolume = new Volume("/var/lib/containerd");
-                    cmd.withEntrypoint("/usr/local/bin/entrypoint", "/sbin/init")
-                            .withName(CONTAINER_NAME)
-                            .withHostName("kindcontainer-control-plane")
-                            .withVolumes(varVolume)
-                            .withBinds(new Bind("kindcontainer-volume", varVolume, true));
+                    cmd.withEntrypoint("/usr/local/bin/entrypoint", "/sbin/init");
                 })
                 .withEnv("KUBECONFIG", "/etc/kubernetes/admin.conf")
                 .withPrivilegedMode(true)
@@ -96,6 +90,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                 .withTmpFs(new HashMap<String, String>() {{
                     put("/run", "rw");
                     put("/tmp", "rw");
+                    put("/var/lib/containerd", "rw");
                 }})
                 .withNetwork(network)
                 .withNetworkAliases(INTERNAL_HOSTNAME)
@@ -188,7 +183,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     private void untaintMasterNode() throws IOException, InterruptedException {
-        kubectl("taint", "node", CONTAINER_NAME, "node-role.kubernetes.io/master:NoSchedule-");
+        kubectl("taint", "node", INTERNAL_HOSTNAME, "node-role.kubernetes.io/master:NoSchedule-");
     }
 
     private void kubeadmInit(final Map<String, String> params) throws IOException, InterruptedException {
@@ -202,6 +197,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                 // specify our generated config file
                 "--config=" + kubeadmConfig,
                 "--skip-token-print",
+                // Use predetermined node name
+                "--node-name=" + INTERNAL_HOSTNAME,
                 // increase verbosity for debugging
                 "--v=6"
         ));
