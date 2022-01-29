@@ -15,6 +15,7 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer.helm;
 
+import com.dajudge.kindcontainer.BaseSidecarContainer.ExecInContainer;
 import com.dajudge.kindcontainer.exception.ExecutionException;
 
 import java.io.IOException;

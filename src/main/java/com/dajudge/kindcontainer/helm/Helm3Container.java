@@ -16,6 +16,7 @@ limitations under the License.
 package com.dajudge.kindcontainer.helm;
 
 
+import com.dajudge.kindcontainer.BaseSidecarContainer;
 import com.dajudge.kindcontainer.exception.ExecutionException;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
@@ -32,11 +33,8 @@ import java.util.Map;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 
-public class Helm3Container<SELF extends Helm3Container<SELF>> extends GenericContainer<SELF> {
+public class Helm3Container<SELF extends Helm3Container<SELF>> extends BaseSidecarContainer<SELF> {
     private static final String DEFAULT_HELM_IMAGE = "alpine/helm:3.7.2";
-    private static final String KUBECONFIG_PATH = "/tmp/helmcontainer.kubeconfig";
-    private final KubeConfigSupplier kubeConfigSupplier;
-    private boolean kubeConfigWritten = false;
 
     public final RepoFluent repo = new RepoFluent(this::safeExecInContainer);
     public final InstallFluent install = new InstallFluent(this::safeExecInContainer);
@@ -50,39 +48,9 @@ public class Helm3Container<SELF extends Helm3Container<SELF>> extends GenericCo
             final KubeConfigSupplier kubeConfigSupplier,
             final Network network
     ) {
-        super(dockerImageName);
-        this.withEnv("KUBECONFIG", KUBECONFIG_PATH)
-                .withCreateContainerCmdModifier(cmd -> {
-                    cmd.withEntrypoint("sh", "-c", "trap 'echo signal;exit 0' SIGTERM; while : ; do sleep 1 ; done");
-                })
-                .withNetwork(network);
-        this.kubeConfigSupplier = kubeConfigSupplier;
+        super(dockerImageName, kubeConfigSupplier);
+        this.withNetwork(network);
     }
 
-    @Override
-    public ExecResult execInContainer(final String... command) throws UnsupportedOperationException, IOException, InterruptedException {
-        writeKubeConfig();
-        return super.execInContainer(command);
-    }
-
-    @Override
-    public ExecResult execInContainer(final Charset outputCharset, final String... command) throws UnsupportedOperationException, IOException, InterruptedException {
-        writeKubeConfig();
-        return super.execInContainer(outputCharset, command);
-    }
-
-    private void safeExecInContainer(final String... cmd) throws IOException, InterruptedException, ExecutionException {
-        final ExecResult result = execInContainer(cmd);
-        if(result.getExitCode() != 0) {
-            throw new ExecutionException(cmd, result);
-        }
-    }
-
-    private synchronized void writeKubeConfig() {
-        if (!kubeConfigWritten) {
-            copyFileToContainer(Transferable.of(kubeConfigSupplier.kubeconfig().getBytes(UTF_8)), KUBECONFIG_PATH);
-        }
-        kubeConfigWritten = true;
-    }
 
 }

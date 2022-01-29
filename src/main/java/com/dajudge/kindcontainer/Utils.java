@@ -36,7 +36,7 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 
-final class Utils {
+public final class Utils {
     private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
     private Utils() {
     }
@@ -115,4 +115,5 @@ final class Utils {
                 }))
                 .build();
     }
+
 }
