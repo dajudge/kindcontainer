@@ -35,11 +35,11 @@ public class Helm3Test extends BaseCommonTest {
 
     @Test
     public void can_install_something() throws IOException, ExecutionException, InterruptedException {
-        final String namespace = k8s.withClient(TestUtils::createNewNamespace);
         k8s.helm3().repo.add.run("mittwald", "https://helm.mittwald.de");
         k8s.helm3().repo.update.run();
         k8s.helm3().install
-                .namespace(namespace)
+                .namespace("kubernetes-replicator")
+                .createNamespace()
                 .run("kubernetes-replicator", "mittwald/kubernetes-replicator");
     }
 }

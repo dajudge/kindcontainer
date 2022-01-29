@@ -52,6 +52,11 @@ public class InstallFluent {
         return this;
     }
 
+
+    public InstallFluent createNamespace() {
+        return createNamespace(true);
+    }
+
     public void run(final String releaseName, final String chart) throws IOException, InterruptedException, ExecutionException {
         try {
             final List<String> cmdline = new ArrayList<>(asList("helm", "install"));
