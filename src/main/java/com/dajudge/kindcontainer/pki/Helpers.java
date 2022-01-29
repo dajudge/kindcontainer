@@ -15,24 +15,18 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer.pki;
 
+import com.dajudge.kindcontainer.Utils.ThrowingCallable;
+
 final class Helpers {
     private Helpers() {
         throw new IllegalStateException("Do not instantiate");
     }
 
-    static <T> T call(final ThrowingCallable<T> callable) {
+    static <T> T call(final ThrowingCallable<T, Exception> callable) {
         try {
             return callable.call();
         } catch (final Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    interface ThrowingCallable<T> {
-        T call() throws Exception;
-    }
-
-    interface ThrowingConsumer<T> {
-        void accept(T t) throws Exception;
     }
 }

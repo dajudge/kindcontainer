@@ -116,11 +116,15 @@ public final class Utils {
                 .build();
     }
 
-    public interface ThrowingRunnable {
-        void run() throws Exception;
+    public interface ThrowingRunnable<E extends Exception> {
+        void run() throws E;
     }
 
-    public interface ThrowingConsumer<T> {
-        void accept(T t) throws Exception;
+    public interface ThrowingConsumer<T, E extends Exception> {
+        void accept(T t) throws E;
+    }
+
+    public interface ThrowingCallable<T, E extends Exception> {
+        T call() throws E;
     }
 }
