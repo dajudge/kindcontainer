@@ -64,6 +64,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     private final CertAuthority apiServerCa = new CertAuthority(System::currentTimeMillis, "CN=API Server CA");
     private final EtcdContainer etcd;
     private final Config config = Config.empty();
+    private KeyStoreWrapper apiServerKeyPair;
 
     public ApiServerContainer() {
         this(API_SERVER_IMAGE);
@@ -91,7 +92,8 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .withExposedPorts(INTERNAL_API_SERVER_PORT)
                 .waitingFor(new WaitForExternalPortStrategy(INTERNAL_API_SERVER_PORT))
                 .withNetwork(network)
-                .withNetworkAliases(INTERNAL_HOSTNAME);
+                .withNetworkAliases(INTERNAL_HOSTNAME)
+                .withPostStartupExecution(() -> configureClient(apiServerKeyPair));
     }
 
     @Override
@@ -155,7 +157,6 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
             etcd.start();
             final KeyStoreWrapper apiServerKeyPair = writeCertificates();
             super.start();
-            configureClient(apiServerKeyPair);
         } catch (final RuntimeException e) {
             etcd.close();
             throw e;
@@ -166,7 +167,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     @NotNull
     private KeyStoreWrapper writeCertificates() throws IOException {
-        final KeyStoreWrapper apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
+        apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
                 new GeneralName(GeneralName.iPAddress, Utils.resolve(getHost())),
                 new GeneralName(GeneralName.dNSName, "localhost"),
                 new GeneralName(GeneralName.iPAddress, "127.0.0.1"),
