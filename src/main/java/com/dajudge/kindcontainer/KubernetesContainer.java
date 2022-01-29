@@ -16,6 +16,7 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.helm.Helm3Container;
+import com.dajudge.kindcontainer.kubectl.KubectlContainer;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -23,10 +24,13 @@ import org.testcontainers.utility.DockerImageName;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL_IMAGE;
+
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
     public abstract DefaultKubernetesClient getClient();
 
     private Helm3Container<?> helm3;
+    private KubectlContainer<?> kubectl;
 
     public KubernetesContainer(final DockerImageName dockerImageName) {
         super(dockerImageName);
@@ -59,6 +63,15 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         return helm3;
     }
 
+    public synchronized KubectlContainer<?> kubectl() {
+        if (kubectl == null) {
+            kubectl = new KubectlContainer<>(DEFAULT_KUBECTL_IMAGE, this::getInternalKubeconfig)
+                    .withNetwork(getNetwork());
+            kubectl.start();
+        }
+        return kubectl;
+    }
+
     @Override
     public void stop() {
         try {
@@ -66,7 +79,13 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
                 helm3.stop();
             }
         } finally {
-            super.stop();
+            try {
+                if (kubectl != null) {
+                    kubectl.stop();
+                }
+            } finally {
+                super.stop();
+            }
         }
     }
 }

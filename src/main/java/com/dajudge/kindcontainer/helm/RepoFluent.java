@@ -15,14 +15,15 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer.helm;
 
+import com.dajudge.kindcontainer.BaseSidecarContainer;
 import com.dajudge.kindcontainer.exception.ExecutionException;
 
 import java.io.IOException;
 
 public class RepoFluent {
-    private final ExecInContainer c;
+    private final BaseSidecarContainer.ExecInContainer c;
 
-    RepoFluent(final ExecInContainer c) {
+    RepoFluent(final BaseSidecarContainer.ExecInContainer c) {
         this.c = c;
     }
 
