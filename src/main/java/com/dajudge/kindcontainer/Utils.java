@@ -116,4 +116,11 @@ public final class Utils {
                 .build();
     }
 
+    public interface ThrowingRunnable {
+        void run() throws Exception;
+    }
+
+    public interface ThrowingConsumer<T> {
+        void accept(T t) throws Exception;
+    }
 }

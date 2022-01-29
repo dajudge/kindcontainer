@@ -15,12 +15,16 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
+import com.dajudge.kindcontainer.Utils.ThrowingRunnable;
 import com.dajudge.kindcontainer.helm.Helm3Container;
 import com.dajudge.kindcontainer.kubectl.KubectlContainer;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -29,6 +33,7 @@ import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
     public abstract DefaultKubernetesClient getClient();
 
+    private final List<ThrowingRunnable> postStartupExecutions = new ArrayList<>();
     private Helm3Container<?> helm3;
     private KubectlContainer<?> kubectl;
 
@@ -55,6 +60,14 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
 
     public abstract String getInternalKubeconfig();
 
+    public T withHelm3(final ThrowingConsumer<Helm3Container<?>> consumer) {
+        return withPostStartupExecution(() -> consumer.accept(helm3()));
+    }
+
+    public T withKubectl(final ThrowingConsumer<KubectlContainer<?>> consumer) {
+        return withPostStartupExecution(() -> consumer.accept(kubectl()));
+    }
+
     public synchronized Helm3Container<?> helm3() {
         if (helm3 == null) {
             helm3 = new Helm3Container<>(this::getInternalKubeconfig, getNetwork());
@@ -73,6 +86,20 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     @Override
+    public void start() {
+        super.start();
+        postStartupExecutions.forEach(
+                r -> {
+                    try {
+                        r.run();
+                    } catch (final Exception e) {
+                        throw new RuntimeException("Failed to execute post startup runnable", e);
+                    }
+                }
+        );
+    }
+
+    @Override
     public void stop() {
         try {
             if (helm3 != null) {
@@ -87,5 +114,10 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
                 super.stop();
             }
         }
+    }
+
+    protected T withPostStartupExecution(final ThrowingRunnable runnable) {
+        postStartupExecutions.add(runnable);
+        return self();
     }
 }

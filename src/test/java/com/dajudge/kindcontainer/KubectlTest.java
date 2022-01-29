@@ -15,11 +15,8 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer;
 
-import com.dajudge.kindcontainer.exception.ExecutionException;
 import org.junit.ClassRule;
 import org.junit.Test;
-
-import java.io.IOException;
 
 import static org.junit.Assert.assertNotNull;
 import static org.testcontainers.utility.MountableFile.forClasspathResource;
@@ -27,13 +24,13 @@ import static org.testcontainers.utility.MountableFile.forClasspathResource;
 public class KubectlTest {
 
     @ClassRule
-    public static ApiServerContainer<?> K8S = new ApiServerContainer<>();
+    public static ApiServerContainer<?> K8S = new ApiServerContainer<>()
+            .withKubectl(kubectl -> kubectl.apply
+                    .withFile(forClasspathResource("manifests/configmap1.yaml"), "/tmp/configmap1.yaml")
+                    .run("/tmp/configmap1.yaml"));
 
     @Test
-    public void can_apply_manifest() throws IOException, ExecutionException, InterruptedException {
-        K8S.kubectl().apply
-                .withFile(forClasspathResource("manifests/configmap1.yaml"), "/tmp/configmap1.yaml")
-                .run("/tmp/configmap1.yaml");
+    public void can_apply_manifest() {
         K8S.withClient(client -> {
             assertNotNull(client.configMaps().inNamespace("configmap1").withName("configmap1").get());
         });
