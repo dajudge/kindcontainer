@@ -33,7 +33,7 @@ import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
     public abstract DefaultKubernetesClient getClient();
 
-    private final List<ThrowingRunnable> postStartupExecutions = new ArrayList<>();
+    private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
     private Helm3Container<?> helm3;
     private KubectlContainer<?> kubectl;
 
@@ -116,7 +116,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         }
     }
 
-    protected T withPostStartupExecution(final ThrowingRunnable runnable) {
+    protected T withPostStartupExecution(final ThrowingRunnable<Exception> runnable) {
         postStartupExecutions.add(runnable);
         return self();
     }
