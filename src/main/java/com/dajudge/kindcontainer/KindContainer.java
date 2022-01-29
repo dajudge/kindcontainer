@@ -368,7 +368,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     private void dumpDebuggingInfo() {
-        withClient(client -> {
+        runWithClient(client -> {
             client.nodes().list().getItems().forEach(it -> LOG.info("{}", it));
             client.pods().list().getItems().forEach(it -> LOG.info("{}", it));
             client.pods().list().getItems().stream()
@@ -387,7 +387,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                 "Ready".equals(cond.getType()) && "True".equals(cond.getStatus());
         final Predicate<Node> nodeIsReady = node -> node.getStatus().getConditions().stream()
                 .anyMatch(isReadyStatus);
-        return () -> withClient(client -> {
+        return () -> runWithClient(client -> {
             try {
                 return client.nodes().list().getItems().stream()
                         .peek(it -> LOG.trace("{} -> {}", it.getMetadata().getName(), it.getStatus().getConditions()))

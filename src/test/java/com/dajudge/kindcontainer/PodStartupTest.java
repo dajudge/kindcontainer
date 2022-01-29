@@ -27,12 +27,12 @@ import static org.awaitility.Awaitility.await;
 public class PodStartupTest extends BaseKindContainerTest {
     @Test
     public void can_start_pod() {
-        final Pod pod = KIND.withClient(client -> {
+        final Pod pod = KIND.runWithClient(client -> {
             return createSimplePod(client, namespace);
         });
         await("testpod")
                 .timeout(ofSeconds(300))
-                .until(() -> KIND.withClient(client -> {
+                .until(() -> KIND.runWithClient(client -> {
                     return isRunning(client, pod);
                 }));
     }

@@ -41,14 +41,14 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         super(dockerImageName);
     }
 
-    public void withClient(final Consumer<DefaultKubernetesClient> callable) {
-        withClient(client -> {
+    public void runWithClient(final Consumer<DefaultKubernetesClient> callable) {
+        runWithClient(client -> {
             callable.accept(client);
             return null;
         });
     }
 
-    public <R> R withClient(final Function<DefaultKubernetesClient, R> callable) {
+    public <R> R runWithClient(final Function<DefaultKubernetesClient, R> callable) {
         try (final DefaultKubernetesClient client = getClient()) {
             return callable.apply(client);
         }

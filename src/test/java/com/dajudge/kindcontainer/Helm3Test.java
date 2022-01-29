@@ -16,15 +16,11 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.exception.ExecutionException;
-import io.fabric8.kubernetes.api.model.NamespaceBuilder;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import java.io.IOException;
-import java.util.UUID;
-
-import static com.dajudge.kindcontainer.TestUtils.createNewNamespace;
 
 @RunWith(Parameterized.class)
 public class Helm3Test extends BaseCommonTest {
@@ -35,7 +31,7 @@ public class Helm3Test extends BaseCommonTest {
 
     @Test
     public void can_install_something() throws IOException, ExecutionException, InterruptedException {
-        final String namespace = k8s.withClient(TestUtils::createNewNamespace);
+        final String namespace = k8s.runWithClient(TestUtils::createNewNamespace);
         k8s.helm3().repo.add.run("mittwald", "https://helm.mittwald.de");
         k8s.helm3().repo.update.run();
         k8s.helm3().install
