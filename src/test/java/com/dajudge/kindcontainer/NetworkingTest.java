@@ -16,8 +16,6 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.Transferable;
@@ -27,7 +25,6 @@ import java.io.IOException;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertEquals;
 
-@RunWith(Parameterized.class)
 public class NetworkingTest extends BaseCommonTest {
 
     public NetworkingTest(final KubernetesContainer<?> k8s) {

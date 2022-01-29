@@ -16,14 +16,12 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import io.fabric8.kubernetes.client.KubernetesClient;
-import org.junit.ClassRule;
 import org.junit.Test;
 
+import static com.dajudge.kindcontainer.StaticContainers.API_SERVER;
 import static org.junit.Assert.assertTrue;
 
 public class ApiServerContainerTest {
-    @ClassRule
-    public static ApiServerContainer<?> API_SERVER = new ApiServerContainer<>();
 
     @Test
     public void starts_apiserver() {
