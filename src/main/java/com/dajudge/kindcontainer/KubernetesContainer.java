@@ -60,11 +60,11 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
 
     public abstract String getInternalKubeconfig();
 
-    public T withHelm3(final ThrowingConsumer<Helm3Container<?>> consumer) {
+    public T withHelm3(final ThrowingConsumer<Helm3Container<?>, Exception> consumer) {
         return withPostStartupExecution(() -> consumer.accept(helm3()));
     }
 
-    public T withKubectl(final ThrowingConsumer<KubectlContainer<?>> consumer) {
+    public T withKubectl(final ThrowingConsumer<KubectlContainer<?>, Exception> consumer) {
         return withPostStartupExecution(() -> consumer.accept(kubectl()));
     }
 

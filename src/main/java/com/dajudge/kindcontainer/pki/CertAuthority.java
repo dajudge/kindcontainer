@@ -15,6 +15,8 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer.pki;
 
+import com.dajudge.kindcontainer.Utils;
+import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
 import org.testcontainers.shaded.org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x500.X500Name;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.*;
@@ -50,10 +52,6 @@ import static java.util.Collections.singletonList;
 public class CertAuthority {
     static {
         Security.addProvider(new BouncyCastleProvider());
-    }
-
-    private interface ThrowingConsumer<T, E extends Exception> {
-        void accept(final T t) throws E;
     }
 
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
@@ -195,7 +193,7 @@ public class CertAuthority {
         });
     }
 
-    private static KeyStore createJks(final Helpers.ThrowingConsumer<KeyStore> withKeyStore) {
+    private static KeyStore createJks(final ThrowingConsumer<KeyStore, Exception> withKeyStore) {
         return Helpers.call(() -> {
             final KeyStore keystore = KeyStore.getInstance("JKS");
             keystore.load(null, null);
