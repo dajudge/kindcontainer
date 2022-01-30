@@ -16,7 +16,9 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.ContainerNetwork;
+import com.github.dockerjava.api.model.Volume;
 import io.fabric8.kubernetes.api.model.Config;
 import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeCondition;
@@ -27,6 +29,7 @@ import io.fabric8.kubernetes.client.internal.KubeConfigUtils;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
@@ -61,6 +64,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final String DEFAULT_IMAGE = "kindest/node:v1.21.1";
     private static final String INTERNAL_HOSTNAME = "kindcontainer";
     private static final int INTERNAL_API_SERVER_PORT = 6443;
+    private final String volumeName = "kindcontainer-" + UUID.randomUUID().toString();
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
     private int startupTimeoutSecs = 300;
@@ -79,7 +83,11 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         final Network.NetworkImpl network = createNetwork();
         this.withStartupTimeout(ofSeconds(300))
                 .withCreateContainerCmdModifier(cmd -> {
-                    cmd.withEntrypoint("/usr/local/bin/entrypoint", "/sbin/init");
+                    final Volume varVolume = new Volume("/var/lib/containerd");
+                    cmd.withEntrypoint("/usr/local/bin/entrypoint", "/sbin/init")
+                            .withVolumes(varVolume)
+                            .withBinds(new Bind(volumeName, varVolume, true));
+
                 })
                 .withEnv("KUBECONFIG", "/etc/kubernetes/admin.conf")
                 .withPrivilegedMode(true)
@@ -87,10 +95,10 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                 .withTmpFs(new HashMap<String, String>() {{
                     put("/run", "rw");
                     put("/tmp", "rw");
-                    put("/var/lib/containerd", "rw");
                 }})
                 .withNetwork(network)
                 .withNetworkAliases(INTERNAL_HOSTNAME);
+
     }
 
     @Override
@@ -334,7 +342,30 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
     @Override
     public void start() {
+        createVolumes();
         super.start();
+    }
+
+    private void createVolumes() {
+        dockerClient.createVolumeCmd()
+                .withName(volumeName)
+                .withLabels(DockerClientFactory.DEFAULT_LABELS)
+                .exec();
+        LOG.debug("Created volume: {}", volumeName);
+    }
+
+    @Override
+    public void stop() {
+        try {
+            super.stop();
+        } finally {
+            try {
+                dockerClient.removeVolumeCmd(volumeName).exec();
+            } catch (final Exception e) {
+                LOG.warn("Failed to remove volume: {}", volumeName, e);
+            }
+        }
+
     }
 
     private void waitForNodeReady() {
