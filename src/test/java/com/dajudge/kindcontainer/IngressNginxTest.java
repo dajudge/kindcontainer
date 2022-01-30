@@ -15,14 +15,14 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer;
 
+import io.fabric8.kubernetes.api.model.apps.Deployment;
 import org.junit.ClassRule;
 import org.junit.Test;
-import org.slf4j.LoggerFactory;
 
-import java.util.concurrent.TimeUnit;
-
-import static com.dajudge.kindcontainer.TestUtils.stringResource;
-import static java.util.Collections.singletonList;
+import static com.dajudge.kindcontainer.DeploymentWaitStrategy.deploymentIsReady;
+import static io.fabric8.kubernetes.client.internal.readiness.Readiness.isDeploymentReady;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 public class IngressNginxTest {
 
@@ -37,15 +37,18 @@ public class IngressNginxTest {
                         .set("controller.service.type", "NodePort")
                         .set("controller.service.nodePorts.http", "30080")
                         .run("ingress-nginx", "ingress-nginx/ingress-nginx");
-            });
+            })
+            .waitingFor(deploymentIsReady("ingress-nginx", "ingress-nginx-controller"));
 
     @Test
     public void ingress_deployment_becomes_ready() {
         KIND.runWithClient(client -> {
-            LoggerFactory.getLogger(IngressNginxTest.class).info("Waiting for ingress-nginx deployment to become ready");
-            client.inNamespace("ingress-nginx").apps().deployments()
+            final Deployment deployment = client.apps().deployments()
+                    .inNamespace("ingress-nginx")
                     .withName("ingress-nginx-controller")
-                    .waitUntilReady(1200, TimeUnit.SECONDS);
+                    .get();
+            assertNotNull(deployment);
+            assertTrue(isDeploymentReady(deployment));
         });
     }
 }
