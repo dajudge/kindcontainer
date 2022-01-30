@@ -24,7 +24,6 @@ import org.junit.Test;
 
 import java.util.HashMap;
 
-import static com.dajudge.kindcontainer.StaticContainers.KIND;
 import static com.dajudge.kindcontainer.TestUtils.createNewNamespace;
 import static com.dajudge.kindcontainer.TestUtils.createSimplePod;
 import static java.time.Duration.ofSeconds;
@@ -33,10 +32,10 @@ import static org.awaitility.Awaitility.await;
 public class NodePortTest {
     @Test
     public void exposes_node_port() {
-        final Pod pod = KIND.runWithClient(client -> {
+        final Pod pod = StaticContainers.kind().runWithClient(client -> {
             return createSimplePod(client, createNewNamespace(client));
         });
-        KIND.runWithClient(client -> {
+        StaticContainers.kind().runWithClient(client -> {
             client.services().create(new ServiceBuilder()
                     .withNewMetadata()
                     .withName("nginx")
@@ -57,7 +56,7 @@ public class NodePortTest {
                     .build());
             await("testpod")
                     .timeout(ofSeconds(300))
-                    .until(TestUtils.http("http://localhost:" + KIND.getMappedPort(30000)));
+                    .until(TestUtils.http("http://localhost:" + StaticContainers.kind().getMappedPort(30000)));
 
         });
     }

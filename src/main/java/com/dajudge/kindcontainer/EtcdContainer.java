@@ -57,7 +57,7 @@ class EtcdContainer extends GenericContainer<EtcdContainer> {
                 .withCopyFileToContainer(forClasspathResource("scripts/entrypoint-etcd.sh", 755), ENTRYPOINT_PATH)
                 .withCopyFileToContainer(forClasspathResource("scripts/run-etcd.sh", 755), RUN_SCRIPT_PATH)
                 .withExposedPorts(ETCD_PORT)
-                .waitingFor(new WaitForExternalPortStrategy(ETCD_PORT));
+                .waitingFor(new WaitForPortsExternallyStrategy());
     }
 
     @Override

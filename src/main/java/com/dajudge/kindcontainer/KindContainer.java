@@ -16,9 +16,7 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
-import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.ContainerNetwork;
-import com.github.dockerjava.api.model.Volume;
 import io.fabric8.kubernetes.api.model.Config;
 import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeCondition;
@@ -31,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
 import org.testcontainers.utility.DockerImageName;
@@ -93,8 +90,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                     put("/var/lib/containerd", "rw");
                 }})
                 .withNetwork(network)
-                .withNetworkAliases(INTERNAL_HOSTNAME)
-                .withExposedPorts();
+                .withNetworkAliases(INTERNAL_HOSTNAME);
     }
 
     @Override
@@ -130,46 +126,41 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     @Override
-    public T withExposedPorts(final Integer... ports) {
-        final HashSet<Integer> exposedPorts = new HashSet<>(asList(ports));
-        exposedPorts.add(INTERNAL_API_SERVER_PORT);
-        return super.withExposedPorts(exposedPorts.toArray(new Integer[0]));
-    }
-
-    @Override
-    public T waitingFor(final WaitStrategy waitStrategy) {
-        return super.waitingFor(new WaitForKubeApiStrategy(waitStrategy));
-    }
-
-    @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
         try {
+            final Map<String, String> params = prepareTemplateParams();
             updateCaCertificates();
-            final String containerInternalIpAddress = getInternalIpAddress(this);
-            LOG.info("Container internal IP address: {}", containerInternalIpAddress);
-            LOG.info("Container external IP address: {}", getContainerIpAddress());
-            final Set<String> subjectAlternativeNames = new HashSet<>(asList(
-                    containerInternalIpAddress,
-                    "127.0.0.1",
-                    "localhost",
-                    getContainerIpAddress(),
-                    INTERNAL_HOSTNAME
-            ));
-            LOG.debug("SANs for Kube-API server certificate: {}", subjectAlternativeNames);
-            final Map<String, String> params = new HashMap<String, String>() {{
-                put(".NodeIp", containerInternalIpAddress);
-                put(".PodSubnet", podSubnet);
-                put(".ServiceSubnet", serviceSubnet);
-                put(".CertSANs", subjectAlternativeNames.stream().map(san -> "\"" + san + "\"").collect(joining(",")));
-            }};
-            exec("mkdir", "-p", CONTAINTER_WORKDIR);
             kubeadmInit(params);
             installCni(params);
             installStorage();
             untaintMasterNode();
+            waitForNodeReady();
         } catch (final Exception e) {
             throw new RuntimeException("Failed to initialize node", e);
         }
+        super.containerIsStarting(containerInfo);
+    }
+
+    private Map<String, String> prepareTemplateParams() throws IOException, InterruptedException {
+        final String containerInternalIpAddress = getInternalIpAddress(this);
+        LOG.info("Container internal IP address: {}", containerInternalIpAddress);
+        LOG.info("Container external IP address: {}", getContainerIpAddress());
+        final Set<String> subjectAlternativeNames = new HashSet<>(asList(
+                containerInternalIpAddress,
+                "127.0.0.1",
+                "localhost",
+                getContainerIpAddress(),
+                INTERNAL_HOSTNAME
+        ));
+        LOG.debug("SANs for Kube-API server certificate: {}", subjectAlternativeNames);
+        final Map<String, String> params = new HashMap<String, String>() {{
+            put(".NodeIp", containerInternalIpAddress);
+            put(".PodSubnet", podSubnet);
+            put(".ServiceSubnet", serviceSubnet);
+            put(".CertSANs", subjectAlternativeNames.stream().map(san -> "\"" + san + "\"").collect(joining(",")));
+        }};
+        exec("mkdir", "-p", CONTAINTER_WORKDIR);
+        return params;
     }
 
     private void updateCaCertificates() throws IOException, InterruptedException {
@@ -352,6 +343,9 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         LOG.debug("Ports: ");
         containerInfo.getNetworkSettings().getPorts().getBindings().forEach((e, b) ->
                 LOG.debug("  {} -> {}", e, asList(b)));
+    }
+
+    private void waitForNodeReady() {
         final Node readyNode = waitUntilNotNull(
                 findReadyNode(),
                 startupTimeoutSecs * 1000,

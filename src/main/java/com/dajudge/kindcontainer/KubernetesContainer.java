@@ -19,16 +19,19 @@ import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
 import com.dajudge.kindcontainer.Utils.ThrowingRunnable;
 import com.dajudge.kindcontainer.helm.Helm3Container;
 import com.dajudge.kindcontainer.kubectl.KubectlContainer;
+import com.github.dockerjava.api.command.InspectContainerResponse;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL_IMAGE;
+import static java.util.Arrays.asList;
 
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
     public abstract DefaultKubernetesClient getClient();
@@ -39,6 +42,8 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
 
     public KubernetesContainer(final DockerImageName dockerImageName) {
         super(dockerImageName);
+        this.withExposedPorts(getInternalPort())
+                .waitingFor(new WaitForPortsExternallyStrategy());
     }
 
     public void runWithClient(final Consumer<DefaultKubernetesClient> callable) {
@@ -85,9 +90,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         return kubectl;
     }
 
-    @Override
-    public void start() {
-        super.start();
+    private void runPostAvailabilityExecutions() {
         postStartupExecutions.forEach(
                 r -> {
                     try {
@@ -119,5 +122,18 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     protected T withPostStartupExecution(final ThrowingRunnable<Exception> runnable) {
         postStartupExecutions.add(runnable);
         return self();
+    }
+
+    @Override
+    public T withExposedPorts(final Integer... ports) {
+        final HashSet<Integer> exposedPorts = new HashSet<>(asList(ports));
+        exposedPorts.add(getInternalPort());
+        return super.withExposedPorts(exposedPorts.toArray(new Integer[]{}));
+    }
+
+    @Override
+    protected void containerIsStarting(final InspectContainerResponse containerInfo) {
+        runPostAvailabilityExecutions();
+        super.containerIsStarting(containerInfo);
     }
 }

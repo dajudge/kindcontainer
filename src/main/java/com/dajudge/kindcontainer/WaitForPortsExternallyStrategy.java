@@ -21,21 +21,18 @@ import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import java.time.Duration;
-import java.util.HashSet;
+import java.util.Set;
 
-import static java.util.Collections.singletonList;
+import static java.util.stream.Collectors.toSet;
 
-public class WaitForExternalPortStrategy extends AbstractWaitStrategy {
-
-    private final int port;
-
-    public WaitForExternalPortStrategy(final int port) {
-        this.port = port;
-    }
+public class WaitForPortsExternallyStrategy extends AbstractWaitStrategy {
 
     @Override
     public void waitUntilReady() {
-        final HashSet<Integer> ports = new HashSet<>(singletonList(waitStrategyTarget.getMappedPort(port)));
+        final Set<Integer> ports = waitStrategyTarget.getExposedPorts()
+                .stream()
+                .map(waitStrategyTarget::getMappedPort)
+                .collect(toSet());
         final ExternalPortListeningCheck check = new ExternalPortListeningCheck(waitStrategyTarget, ports);
         Awaitility.await()
                 .pollInSameThread()

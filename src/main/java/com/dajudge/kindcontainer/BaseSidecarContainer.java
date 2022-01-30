@@ -17,16 +17,21 @@ package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.exception.ExecutionException;
 import com.dajudge.kindcontainer.helm.KubeConfigSupplier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.util.Arrays;
 
+import static java.lang.String.join;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class BaseSidecarContainer<T extends BaseSidecarContainer<T>> extends GenericContainer<T> {
+    private static final Logger LOG = LoggerFactory.getLogger(BaseSidecarContainer.class);
     private static final String KUBECONFIG_PATH = "/tmp/helmcontainer.kubeconfig";
     private final KubeConfigSupplier kubeConfigSupplier;
     private boolean kubeConfigWritten = false;
@@ -61,6 +66,7 @@ public class BaseSidecarContainer<T extends BaseSidecarContainer<T>> extends Gen
     }
 
     protected void safeExecInContainer(final String... cmd) throws IOException, InterruptedException, ExecutionException {
+        LOG.info("Executing command: {}", join(" ", Arrays.asList(cmd)));
         final ExecResult result = execInContainer(cmd);
         if (result.getExitCode() != 0) {
             throw new ExecutionException(cmd, result);
