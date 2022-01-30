@@ -335,14 +335,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     @Override
     public void start() {
         super.start();
-        final InspectContainerResponse containerInfo = getContainerInfo();
-        LOG.debug("Bridge: {}", containerInfo.getNetworkSettings().getBridge());
-        LOG.debug("Networks: ");
-        containerInfo.getNetworkSettings().getNetworks().forEach((k, v) ->
-                LOG.debug("  {}: {} gw {}", k, v.getIpAddress(), v.getGateway()));
-        LOG.debug("Ports: ");
-        containerInfo.getNetworkSettings().getPorts().getBindings().forEach((e, b) ->
-                LOG.debug("  {} -> {}", e, asList(b)));
     }
 
     private void waitForNodeReady() {
