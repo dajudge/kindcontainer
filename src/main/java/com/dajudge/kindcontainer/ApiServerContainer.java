@@ -19,32 +19,38 @@ import com.dajudge.kindcontainer.pki.CertAuthority;
 import com.dajudge.kindcontainer.pki.KeyStoreWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.dockerjava.api.command.CreateContainerCmd;
+import com.github.dockerjava.api.command.InspectContainerResponse;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
+import org.testcontainers.containers.wait.internal.ExternalPortListeningCheck;
 import org.testcontainers.shaded.com.google.common.io.Files;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static com.dajudge.kindcontainer.Utils.createNetwork;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.time.Duration.ZERO;
+import static java.time.Duration.ofMillis;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static org.testcontainers.utility.MountableFile.forHostPath;
 
 public class ApiServerContainer<T extends ApiServerContainer<T>> extends KubernetesContainer<T> {
+    private static final Logger LOG = LoggerFactory.getLogger(ApiServerContainer.class);
     private static final String API_SERVER_IMAGE = "k8s.gcr.io/kube-apiserver:v1.21.1";
     private static final String PKI_BASEDIR = "/etc/kubernetes/pki";
     private static final String ETCD_PKI_BASEDIR = PKI_BASEDIR + "/etcd";
@@ -89,8 +95,6 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .withEnv("API_SERVER_PUBKEY", API_SERVER_PUBKEY)
                 .withEnv("IP_ADDRESS_PATH", IP_ADDRESS_PATH)
                 .withEnv("ETCD_HOSTNAME_PATH", ETCD_HOSTNAME_PATH)
-                .withExposedPorts(INTERNAL_API_SERVER_PORT)
-                .waitingFor(new WaitForExternalPortStrategy(INTERNAL_API_SERVER_PORT))
                 .withNetwork(network)
                 .withNetworkAliases(INTERNAL_HOSTNAME)
                 .withPostStartupExecution(() -> configureClient(apiServerKeyPair));
@@ -149,6 +153,25 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     @Override
     public DefaultKubernetesClient getClient() {
         return new DefaultKubernetesClient(config);
+    }
+
+    @Override
+    protected void containerIsStarting(final InspectContainerResponse containerInfo) {
+        waitForApiServer();
+        super.containerIsStarting(containerInfo);
+    }
+
+    private void waitForApiServer() {
+        LOG.info("Waiting for API server...");
+        final HashSet<Integer> externalPort = new HashSet<>(singletonList(getMappedPort(getInternalPort())));
+        final ExternalPortListeningCheck externalCheck = new ExternalPortListeningCheck(this, externalPort);
+        Awaitility.await()
+                .pollInSameThread()
+                .pollInterval(ofMillis(50))
+                .pollDelay(ZERO)
+                .ignoreExceptions()
+                .forever()
+                .until(externalCheck);
     }
 
     @Override

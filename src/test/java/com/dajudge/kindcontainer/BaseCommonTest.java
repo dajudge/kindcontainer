@@ -21,14 +21,11 @@ import org.junit.runners.Parameterized;
 import java.util.Arrays;
 import java.util.Collection;
 
-import static com.dajudge.kindcontainer.StaticContainers.API_SERVER;
-import static com.dajudge.kindcontainer.StaticContainers.KIND;
-
 @RunWith(Parameterized.class)
 public abstract class BaseCommonTest {
     @Parameterized.Parameters
     public static Collection<Object[]> apiServers() {
-        return Arrays.asList(new Object[][]{{API_SERVER}, {KIND}});
+        return Arrays.asList(new Object[][]{{StaticContainers.apiServer()}, {StaticContainers.kind()}});
     }
 
     protected final KubernetesContainer<?> k8s;

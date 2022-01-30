@@ -23,18 +23,29 @@ import static java.util.Collections.singletonList;
  * in https://www.testcontainers.org/test_framework_integration/manual_lifecycle_control/
  */
 public class StaticContainers {
-    public static final KindContainer<?> KIND = new KindContainer<>()
-            .withExposedPorts(30000)
-            .withNodeReadyTimeout(60)
-            .waitingFor(NullWaitStrategy.INSTANCE)
-            .withCaCerts(singletonList(stringResource("test.crt")));
 
-    public static ApiServerContainer<?> API_SERVER = new ApiServerContainer<>();
+    private static KindContainer<?> kind;
+    private static ApiServerContainer<?> apiServer;
 
-    static {
-        KIND.start();
-        API_SERVER.start();
-        Runtime.getRuntime().addShutdownHook(new Thread(KIND::close));
-        Runtime.getRuntime().addShutdownHook(new Thread(API_SERVER::close));
+    public synchronized static KindContainer<?> kind() {
+        if (kind == null) {
+            kind = new KindContainer<>()
+                    .withExposedPorts(30000)
+                    .withNodeReadyTimeout(60)
+                    .withCaCerts(singletonList(stringResource("test.crt")));
+            kind.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(kind::close));
+        }
+        return kind;
+    }
+
+    public synchronized static ApiServerContainer<?> apiServer() {
+        if (apiServer == null) {
+            apiServer = new ApiServerContainer<>()
+                    .withExposedPorts(30000);
+            apiServer.start();
+            Runtime.getRuntime().addShutdownHook(new Thread(apiServer::close));
+        }
+        return apiServer;
     }
 }
