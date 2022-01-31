@@ -34,12 +34,14 @@ import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 import static com.dajudge.kindcontainer.TemplateHelpers.*;
-import static com.dajudge.kindcontainer.Utils.*;
+import static com.dajudge.kindcontainer.Utils.createNetwork;
+import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.lang.String.format;
 import static java.lang.String.join;
@@ -63,8 +65,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private final String volumeName = "kindcontainer-" + UUID.randomUUID().toString();
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
-    private int startupTimeoutSecs = 300;
     private List<String> certs = emptyList();
+    private Duration startupTimeout = Duration.ofSeconds(300);
 
     public KindContainer() {
         this(DEFAULT_IMAGE);
@@ -119,8 +121,14 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         }
     }
 
-    public T withNodeReadyTimeout(final int seconds) {
-        startupTimeoutSecs = seconds;
+    /**
+     * Sets the timeout applied when waiting for the Kubernetes node to become ready.
+     *
+     * @param startupTimeout the timeout
+     * @return <code>this</code>
+     */
+    public T withNodeReadyTimeout(final Duration startupTimeout) {
+        this.startupTimeout = startupTimeout;
         return self();
     }
 
@@ -323,7 +331,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private void waitForNodeReady() {
         final Node readyNode = waitUntilNotNull(
                 findReadyNode(),
-                startupTimeoutSecs * 1000,
+                startupTimeout.toMillis(),
                 "Waiting for a node to become ready...",
                 () -> {
                     dumpDebuggingInfo();

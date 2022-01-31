@@ -66,7 +66,7 @@ public final class Utils {
 
     static <T, E extends Exception> T waitUntilNotNull(
             final Supplier<T> check,
-            final int timeout,
+            final long timeout,
             final String message,
             final Supplier<E> error
     ) throws E {
