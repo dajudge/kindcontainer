@@ -56,6 +56,12 @@ import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
 import static org.testcontainers.containers.BindMode.READ_ONLY;
 
+/**
+ * A Testcontainer for testing against Kubernetes using
+ * <a href="https://kind.sigs.k8s.io/docs/user/quick-start/">kind</a>.
+ *
+ * @param <T> SELF
+ */
 public class KindContainer<T extends KindContainer<T>> extends KubernetesContainer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(KindContainer.class);
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
@@ -72,10 +78,18 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private List<String> certs = emptyList();
     private Duration startupTimeout = Duration.ofSeconds(300);
 
+    /**
+     * Constructs a new <code>KindContainer</code> with the latest supported Kubernetes version.
+     */
     public KindContainer() {
         this(Version.getLatest());
     }
 
+    /**
+     * Constructs a new <code>KindContainer</code>.
+     *
+     * @param version the Kubernetes version to run.
+     */
     public KindContainer(final Version version) {
         super(version.descriptor.getImage());
         this.version = version;
@@ -133,6 +147,12 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         return self();
     }
 
+    /**
+     * Adds certificates to the container's trust anchors.
+     *
+     * @param certs the PEM encoded certificates
+     * @return <code>this</code>
+     */
     public T withCaCerts(final Collection<String> certs) {
         this.certs = new ArrayList<>(certs);
         return self();
@@ -279,6 +299,11 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
     private String kubeconfig;
 
+    /**
+     * Returns a kubeconfig that can be used for access from the outside.
+     *
+     * @return the kubeconfig
+     */
     public synchronized String getExternalKubeconfig() {
         if (kubeconfig == null) {
             kubeconfig = patchKubeConfig(copyFileFromContainer(
@@ -377,11 +402,23 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         });
     }
 
+    /**
+     * Sets the pod subnet.
+     *
+     * @param cidr the subnet CIDR in the <code>0.0.0.0/0</code> format
+     * @return <code>this</code>
+     */
     public T withPodSubnet(final String cidr) {
         podSubnet = cidr;
         return self();
     }
 
+    /**
+     * Sets the service subnet.
+     *
+     * @param cidr the subnet CIDR in the <code>0.0.0.0/0</code> format
+     * @return <code>this</code>
+     */
     public T withServiceSubnet(final String cidr) {
         serviceSubnet = cidr;
         return self();
@@ -435,10 +472,20 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
             this.descriptor = descriptor;
         }
 
+        /**
+         * Returns the latest supported version.
+         *
+         * @return the latest supported version.
+         */
         public static Version getLatest() {
             return descending().get(0);
         }
 
+        /**
+         * Returns the list of available versions in descending order (latest is first).
+         *
+         * @return the list of available versions in descending order (latest is first).
+         */
         public static List<Version> descending() {
             return Stream.of(Version.values())
                     .sorted(COMPARE_DESCENDING)
