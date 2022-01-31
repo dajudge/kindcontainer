@@ -23,7 +23,6 @@ import io.fabric8.kubernetes.api.model.Config;
 import io.fabric8.kubernetes.api.model.Node;
 import io.fabric8.kubernetes.api.model.NodeCondition;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.internal.KubeConfigUtils;
 import io.fabric8.kubernetes.client.utils.Serialization;
@@ -299,29 +298,12 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
     public synchronized String getExternalKubeconfig() {
         if (kubeconfig == null) {
-            final String adminKubeConfig = copyFileFromContainer(
+            kubeconfig = patchKubeConfig(copyFileFromContainer(
                     "/etc/kubernetes/admin.conf",
                     Utils::readString
-            );
-            if (tryKubeconfig(adminKubeConfig)) {
-                kubeconfig = adminKubeConfig;
-                LOG.info("Original kubeconfig works");
-            } else {
-                LOG.info("Original kubeconfig doesn't seem to work, creating patched version...");
-                kubeconfig = patchKubeConfig(adminKubeConfig);
-            }
+            ));
         }
         return kubeconfig;
-    }
-
-    private boolean tryKubeconfig(final String kubeconfig) {
-        try (final KubernetesClient client = client(kubeconfig)) {
-            client.nodes().list();
-            return true;
-        } catch (final Exception e) {
-            LOG.trace("Kubeconfig check failed", e);
-            return false;
-        }
     }
 
     @SuppressWarnings("unchecked")
@@ -330,9 +312,9 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         final List<Map<String, Object>> clusters = (List<Map<String, Object>>) kubeConfigMap.get("clusters");
         final Map<String, Object> firstCluster = clusters.iterator().next();
         final Map<String, Object> cluster = (Map<String, Object>) firstCluster.get("cluster");
-        final String newServerEndpoint = "https://" + getContainerIpAddress() + ":" + getMappedPort(INTERNAL_API_SERVER_PORT);
+        final String newServerEndpoint = format("https://%s:%s", getHost(), getMappedPort(INTERNAL_API_SERVER_PORT));
         final String server = cluster.get("server").toString();
-        LOG.info("Creating kubeconfig with server {} instead of {}", newServerEndpoint, server);
+        LOG.debug("Creating kubeconfig with server {} instead of {}", newServerEndpoint, server);
         cluster.put("server", newServerEndpoint);
         return YAML.dump(kubeConfigMap);
     }
