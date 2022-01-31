@@ -411,6 +411,9 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         }
     }
 
+    /**
+     * The available Kubernetes versions.
+     */
     public enum Version {
         VERSION_1_21_2(new KindVersionDescriptor(1, 21, 2)),
         VERSION_1_22_4(new KindVersionDescriptor(1, 22, 4)),
