@@ -30,21 +30,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.Network;
-import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.util.*;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
+import static com.dajudge.kindcontainer.TemplateHelpers.*;
 import static com.dajudge.kindcontainer.Utils.*;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.lang.String.format;
 import static java.lang.String.join;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -57,9 +55,11 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
     private static final Yaml YAML = new Yaml();
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
+    private static final String KUBEADM_CONFIG = CONTAINTER_WORKDIR + "/kubeadmConfig.yaml";
     private static final String DEFAULT_IMAGE = "kindest/node:v1.21.1";
     private static final String INTERNAL_HOSTNAME = "kindcontainer";
     private static final int INTERNAL_API_SERVER_PORT = 6443;
+    private static final String CACERTS_INSTALL_DIR = "/usr/local/share/ca-certificates";
     private final String volumeName = "kindcontainer-" + UUID.randomUUID().toString();
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
@@ -172,7 +172,11 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
             return;
         }
         for (int i = 0; i < certs.size(); i++) {
-            writeContainerFile(certs.get(i), "/usr/local/share/ca-certificates/custom-cert-" + i + ".crt");
+            writeContainerFile(
+                    this,
+                    certs.get(i),
+                    String.format("%s/custom-cert-%d.crt", CACERTS_INSTALL_DIR, i)
+            );
         }
         exec(singletonList("update-ca-certificates"));
     }
@@ -182,10 +186,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     private void kubeadmInit(final Map<String, String> params) throws IOException, InterruptedException {
-        final String kubeadmConfig = writeContainerFile(
-                kubeadmConfigFor(params),
-                CONTAINTER_WORKDIR + "/kubeadmConfig.yaml"
-        );
+        final String kubeadmConfig = templateResource(this, "kubeadm.yaml", params, KUBEADM_CONFIG);
         exec(asList(
                 "kubeadm", "init",
                 "--skip-phases=preflight",
@@ -205,29 +206,12 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
     private void installCni(final Map<String, String> params) throws IOException, InterruptedException {
         final String cniManifest = templateContainerFile(
+                this,
                 "/kind/manifests/default-cni.yaml",
                 CONTAINTER_WORKDIR + "/cni.yaml",
                 params
         );
         kubectl("apply", "-f", cniManifest);
-    }
-
-    private String templateContainerFile(
-            final String sourceFileName,
-            final String destFileName,
-            final Map<String, String> params
-    ) {
-        return writeContainerFile(template(readContainerFile(sourceFileName), params), destFileName);
-    }
-
-    private String readContainerFile(final String fname) {
-        return copyFileFromContainer(fname, Utils::readString);
-    }
-
-    private String writeContainerFile(final String content, final String fname) {
-        LOG.info("Writing container file: {}", fname);
-        copyFileToContainer(Transferable.of(content.getBytes(UTF_8)), fname);
-        return fname;
     }
 
     private void kubectl(
@@ -257,17 +241,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
             LOG.error("{}", execResult.getStderr().replaceAll("(?m)^", "STDERR: "));
             throw new IllegalStateException(cmdString + " exited with status code " + execResult);
         }
-    }
-
-    private static String kubeadmConfigFor(final Map<String, String> replacements) {
-        return template(loadResource("kubeadm.yaml"), replacements);
-    }
-
-    private static String template(String string, final Map<String, String> replacements) {
-        return replacements.entrySet().stream()
-                .map(r -> ((Function<String, String>) (s -> s.replace("{{ " + r.getKey() + " }}", r.getValue()))))
-                .reduce(Function.identity(), Function::andThen)
-                .apply(string);
     }
 
     private static String getInternalIpAddress(final KindContainer<?> container) {
