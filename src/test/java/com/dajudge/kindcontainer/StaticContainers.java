@@ -29,7 +29,7 @@ public class StaticContainers {
 
     public synchronized static KindContainer<?> kind() {
         if (kind == null) {
-            kind = new KindContainer<>(KindContainer.Version.VERSION_1_21_1)
+            kind = new KindContainer<>()
                     .withExposedPorts(30000)
                     .withNodeReadyTimeout(60)
                     .withCaCerts(singletonList(stringResource("test.crt")));

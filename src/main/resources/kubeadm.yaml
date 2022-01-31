@@ -23,7 +23,7 @@ controllerManager:
   extraArgs:
     enable-hostpath-provisioner: "true"
 kind: ClusterConfiguration
-kubernetesVersion: v1.21.1
+kubernetesVersion: {{ .KubernetesVersion }}
 networking:
   podSubnet: {{ .PodSubnet }}
   serviceSubnet: {{ .ServiceSubnet }}

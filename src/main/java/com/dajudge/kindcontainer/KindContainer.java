@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.Network;
+import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
 import org.testcontainers.utility.DockerImageName;
 
@@ -37,9 +38,11 @@ import java.io.IOException;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.TemplateHelpers.*;
-import static com.dajudge.kindcontainer.Utils.*;
+import static com.dajudge.kindcontainer.Utils.createNetwork;
+import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.lang.String.format;
 import static java.lang.String.join;
@@ -47,7 +50,9 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
+import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 import static org.testcontainers.containers.BindMode.READ_ONLY;
 
 public class KindContainer<T extends KindContainer<T>> extends KubernetesContainer<T> {
@@ -60,13 +65,19 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final String CACERTS_INSTALL_DIR = "/usr/local/share/ca-certificates";
     private final String volumeName = "kindcontainer-" + UUID.randomUUID().toString();
+    private final Version version;
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
     private int startupTimeoutSecs = 300;
     private List<String> certs = emptyList();
 
+    public KindContainer() {
+        this(Version.getLatest());
+    }
+
     public KindContainer(final Version version) {
         super(version.descriptor.getImage());
+        this.version = version;
         final Network.NetworkImpl network = createNetwork();
         this.withStartupTimeout(ofSeconds(300))
                 .withCreateContainerCmdModifier(cmd -> {
@@ -153,6 +164,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
             put(".PodSubnet", podSubnet);
             put(".ServiceSubnet", serviceSubnet);
             put(".CertSANs", subjectAlternativeNames.stream().map(san -> "\"" + san + "\"").collect(joining(",")));
+            put(".KubernetesVersion", version.descriptor.getKubernetesVersion());
         }};
         exec("mkdir", "-p", CONTAINTER_WORKDIR);
         return params;
@@ -166,7 +178,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
             writeContainerFile(
                     this,
                     certs.get(i),
-                    String.format("%s/custom-cert-%d.crt", CACERTS_INSTALL_DIR, i)
+                    format("%s/custom-cert-%d.crt", CACERTS_INSTALL_DIR, i)
             );
         }
         exec(singletonList("update-ca-certificates"));
@@ -368,7 +380,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         return self();
     }
 
-    private static class KindVersionDescriptor implements Comparable<KindVersionDescriptor> {
+    @VisibleForTesting
+    static class KindVersionDescriptor implements Comparable<KindVersionDescriptor> {
         private final int major, minor, patch;
 
         KindVersionDescriptor(final int major, final int minor, final int patch) {
@@ -389,17 +402,43 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         }
 
         public DockerImageName getImage() {
-            return DockerImageName.parse(String.format("kindest/node:v%d.%d.%d", major, minor, patch));
+            return DockerImageName.parse(format("kindest/node:%s", getKubernetesVersion()));
+        }
+
+        @VisibleForTesting
+        String getKubernetesVersion() {
+            return format("v%d.%d.%d", major, minor, patch);
         }
     }
 
     public enum Version {
-        VERSION_1_21_1(new KindVersionDescriptor(1, 21, 1));
+        VERSION_1_21_2(new KindVersionDescriptor(1, 21, 2)),
+        VERSION_1_22_4(new KindVersionDescriptor(1, 22, 4)),
+        VERSION_1_23_4(new KindVersionDescriptor(1, 23, 3));
 
-        private final KindVersionDescriptor descriptor;
+        private static final Comparator<Version> COMPARE_ASCENDING = comparing(a -> a.descriptor);
+        private static final Comparator<Version> COMPARE_DESCENDING = COMPARE_ASCENDING.reversed();
+        @VisibleForTesting
+        final KindVersionDescriptor descriptor;
 
         Version(final KindVersionDescriptor descriptor) {
             this.descriptor = descriptor;
+        }
+
+        public static Version getLatest() {
+            return descending().get(0);
+        }
+
+        public static List<Version> descending() {
+            return Stream.of(Version.values())
+                    .sorted(COMPARE_DESCENDING)
+                    .collect(toList());
+        }
+
+
+        @Override
+        public String toString() {
+            return format("%d.%d.%d", descriptor.major, descriptor.minor, descriptor.patch);
         }
     }
 
