@@ -59,10 +59,25 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         }
     }
 
+    /**
+     * The hostname of the API server in the container's docker network.
+     *
+     * @return the internal hostname
+     */
     public abstract String getInternalHostname();
 
+    /**
+     * The port of the API server in the container's docker network.
+     *
+     * @return the internal API server port
+     */
     public abstract int getInternalPort();
 
+    /**
+     * Returns a kubeconfig that can be used for access from the container's docker network.
+     *
+     * @return the kubeconfig
+     */
     public abstract String getInternalKubeconfig();
 
     public T withHelm3(final ThrowingConsumer<Helm3Container<?>, Exception> consumer) {
