@@ -178,7 +178,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     public void start() {
         try {
             etcd.start();
-            final KeyStoreWrapper apiServerKeyPair = writeCertificates();
+            writeCertificates();
             super.start();
         } catch (final RuntimeException e) {
             etcd.close();
