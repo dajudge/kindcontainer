@@ -31,7 +31,6 @@ public class StaticContainers {
         if (kind == null) {
             kind = new KindContainer<>()
                     .withExposedPorts(30000)
-                    .withNodeReadyTimeout(60)
                     .withCaCerts(singletonList(stringResource("test.crt")));
             kind.start();
             Runtime.getRuntime().addShutdownHook(new Thread(kind::close));
