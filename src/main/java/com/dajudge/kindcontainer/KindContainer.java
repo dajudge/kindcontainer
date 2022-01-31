@@ -30,7 +30,6 @@ import io.fabric8.kubernetes.client.utils.Serialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.Container;
 import org.testcontainers.containers.Network;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
@@ -41,7 +40,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.Utils.*;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
@@ -53,7 +51,6 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 import static org.testcontainers.containers.BindMode.READ_ONLY;
 
 public class KindContainer<T extends KindContainer<T>> extends KubernetesContainer<T> {
@@ -423,45 +420,5 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     public T withServiceSubnet(final String cidr) {
         serviceSubnet = cidr;
         return self();
-    }
-
-    public void pullImages(final String... images) {
-        LOG.info("Pulling {} images...", images.length);
-        new HashSet<>(Stream.of(images)
-                .map(KindContainer::fullNameOf).collect(toList()))
-                .forEach(this::pullImage);
-        LOG.info("Pull complete");
-    }
-
-    public void pullImage(final String imageName) {
-        final String fullImageName = fullNameOf(imageName);
-        LOG.info("Pulling image: {}", fullImageName);
-        try {
-            final Container.ExecResult result = execInContainer("ctr", "-n", "k8s.io",
-                    "image", "pull", fullImageName
-            );
-            if (result.getExitCode() != 0) {
-                LOG.error("Image pull returned non-zero exit code: {}", result.getExitCode());
-                LOG.error("\n{}", indent("STDOUT: ", result.getStdout()));
-                LOG.error("\n{}", indent("STDERR: ", result.getStderr()));
-                throw new AssertionError("Image pull returned non-zero exit code: " + result.getExitCode());
-            }
-        } catch (final IOException | InterruptedException e) {
-            throw new AssertionError("Failed to pull image " + fullImageName, e);
-        }
-    }
-
-    private static String fullNameOf(final String image) {
-        final StringBuilder builder = new StringBuilder(image);
-        if (!image.contains(":")) {
-            builder.append(":latest");
-        }
-        if (image.indexOf('/') < 0) {
-            builder.insert(0, "library/");
-        }
-        if (image.indexOf('/') == image.lastIndexOf('/')) {
-            builder.insert(0, "docker.io/");
-        }
-        return builder.toString();
     }
 }
