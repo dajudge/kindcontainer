@@ -213,11 +213,11 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         );
         kubectl("apply", "-f", cniManifest);
     }
-
+  
     private void kubectl(
             final String... params
     ) throws IOException, InterruptedException {
-        final List<String> exec = new ArrayList<>(asList("kubectl", "--kubeconfig", "/etc/kubernetes/admin.conf"));
+        final List<String> exec = new ArrayList<>(singletonList("kubectl"));
         exec.addAll(asList(params));
         exec(exec);
     }
