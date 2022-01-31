@@ -27,7 +27,7 @@ import static org.junit.Assert.assertTrue;
 public class IngressNginxTest {
 
     @ClassRule
-    public static KindContainer<?> KIND = new KindContainer<>()
+    public static KindContainer<?> KIND = new KindContainer<>(KindContainer.Version.VERSION_1_21_1)
             .withHelm3(helm -> {
                 helm.repo.add.run("ingress-nginx", "https://kubernetes.github.io/ingress-nginx");
                 helm.repo.update.run();

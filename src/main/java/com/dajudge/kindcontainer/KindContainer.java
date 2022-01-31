@@ -56,7 +56,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final Yaml YAML = new Yaml();
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
     private static final String KUBEADM_CONFIG = CONTAINTER_WORKDIR + "/kubeadmConfig.yaml";
-    private static final String DEFAULT_IMAGE = "kindest/node:v1.21.1";
     private static final String INTERNAL_HOSTNAME = "kindcontainer";
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final String CACERTS_INSTALL_DIR = "/usr/local/share/ca-certificates";
@@ -66,16 +65,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private int startupTimeoutSecs = 300;
     private List<String> certs = emptyList();
 
-    public KindContainer() {
-        this(DEFAULT_IMAGE);
-    }
-
-    public KindContainer(final String image) {
-        this(DockerImageName.parse(image));
-    }
-
-    public KindContainer(final DockerImageName image) {
-        super(image);
+    public KindContainer(final Version version) {
+        super(version.descriptor.getImage());
         final Network.NetworkImpl network = createNetwork();
         this.withStartupTimeout(ofSeconds(300))
                 .withCreateContainerCmdModifier(cmd -> {
@@ -376,4 +367,40 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         serviceSubnet = cidr;
         return self();
     }
+
+    private static class KindVersionDescriptor implements Comparable<KindVersionDescriptor> {
+        private final int major, minor, patch;
+
+        KindVersionDescriptor(final int major, final int minor, final int patch) {
+            this.major = major;
+            this.minor = minor;
+            this.patch = patch;
+        }
+
+        @Override
+        public int compareTo(final KindVersionDescriptor o) {
+            if (major != o.major) {
+                return Integer.compare(major, o.major);
+            }
+            if (minor != o.minor) {
+                return Integer.compare(minor, o.minor);
+            }
+            return Integer.compare(patch, o.patch);
+        }
+
+        public DockerImageName getImage() {
+            return DockerImageName.parse(String.format("kindest/node:v%d.%d.%d", major, minor, patch));
+        }
+    }
+
+    public enum Version {
+        VERSION_1_21_1(new KindVersionDescriptor(1, 21, 1));
+
+        private final KindVersionDescriptor descriptor;
+
+        Version(final KindVersionDescriptor descriptor) {
+            this.descriptor = descriptor;
+        }
+    }
+
 }
