@@ -248,9 +248,17 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     @Override
     public String getInternalKubeconfig() {
+        return getKubeconfig(format("https://%s:%d", INTERNAL_HOSTNAME, INTERNAL_API_SERVER_PORT));
+    }
+
+    @Override
+    public String getExternalKubeconfig() {
+        return getKubeconfig(format("https://%s:%d", getHost(), getMappedPort(INTERNAL_API_SERVER_PORT)));
+    }
+
+    private String getKubeconfig(String url) {
         try {
-            final String url = format("https://%s:%d", INTERNAL_HOSTNAME, INTERNAL_API_SERVER_PORT);
-            return Serialization.yamlMapper().writeValueAsString(new io.fabric8.kubernetes.api.model.ConfigBuilder()
+            return Serialization.yamlMapper().writeValueAsString(new ConfigBuilder()
                     .withClusters(new NamedClusterBuilder()
                             .withName("kindcontainer")
                             .withCluster(new ClusterBuilder()

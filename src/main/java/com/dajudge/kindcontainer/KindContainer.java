@@ -15,18 +15,17 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
+import com.dajudge.kindcontainer.Utils.ThrowingFunction;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import com.github.dockerjava.api.model.Volume;
-import io.fabric8.kubernetes.api.model.Config;
-import io.fabric8.kubernetes.api.model.Node;
-import io.fabric8.kubernetes.api.model.NodeCondition;
+import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.internal.KubeConfigUtils;
 import io.fabric8.kubernetes.client.utils.Serialization;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
@@ -48,6 +47,7 @@ import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.lang.String.format;
 import static java.lang.String.join;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
@@ -248,7 +248,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         );
         kubectl("apply", "-f", cniManifest);
     }
-  
+
     private void kubectl(
             final String... params
     ) throws IOException, InterruptedException {
@@ -304,11 +304,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
     private String kubeconfig;
 
-    /**
-     * Returns a kubeconfig that can be used for access from the outside.
-     *
-     * @return the kubeconfig
-     */
+    @Override
     public synchronized String getExternalKubeconfig() {
         if (kubeconfig == null) {
             kubeconfig = patchKubeConfig(copyFileFromContainer(
@@ -471,6 +467,100 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         public String toString() {
             return format("%d.%d.%d", descriptor.getMajor(), descriptor.getMinor(), descriptor.getPatch());
         }
+    }
+
+    /**
+     * Provides a <code>DefaultKubernetesClient</code> for the specified <code>ServiceAccount</code> to a piece of code.
+     *
+     * @param serviceAccountNamespace the namespace of the <code>ServiceAccount</code> to impersonate
+     * @param serviceAccountName      the name of the <code>ServiceAccount</code> to impersonate
+     * @param consumer                the <code>ThrowingConsumer</code> to execute
+     */
+    public void runWithClient(
+            final String serviceAccountNamespace,
+            final String serviceAccountName,
+            final ThrowingConsumer<DefaultKubernetesClient, Exception> consumer
+    ) {
+        runWithClient(serviceAccountNamespace, serviceAccountName, client -> {
+            consumer.accept(client);
+            return null;
+        });
+    }
+
+    /**
+     * Provides a <code>DefaultKubernetesClient</code> for the specified <code>ServiceAccount</code> to a piece of code.
+     *
+     * @param serviceAccountNamespace the namespace of the <code>ServiceAccount</code> to impersonate
+     * @param serviceAccountName      the name of the <code>ServiceAccount</code> to impersonate
+     * @param function                the <code>ThrowingFunction</code> to execute
+     * @param <R>                     the return type
+     * @return the return value of the function
+     */
+    public <R> R runWithClient(
+            final String serviceAccountNamespace,
+            final String serviceAccountName,
+            final ThrowingFunction<DefaultKubernetesClient, R, Exception> function
+    ) {
+        try (final DefaultKubernetesClient client = getClient(serviceAccountNamespace, serviceAccountName)) {
+            try {
+                return function.apply(client);
+            } catch (final Exception e) {
+                throw new RuntimeException("Error running with client", e);
+            }
+        }
+    }
+
+    /**
+     * Returns a fabric8 Kubernetes client for a given <code>ServiceAccount</code>.
+     *
+     * @param serviceAccountNamespace the namespace of the <code>ServiceAccount</code> to impersonate
+     * @param serviceAccountName      the name of the <code>ServiceAccount</code> to impersonate
+     * @return a <code>DefaultKubernetesClient</code> for the specified service account
+     */
+    public DefaultKubernetesClient getClient(final String serviceAccountNamespace, final String serviceAccountName) {
+        try (final DefaultKubernetesClient client = getClient()) {
+            final String token = getServiceAccountToken(serviceAccountNamespace, serviceAccountName, client);
+            return impersonate(token);
+        }
+    }
+
+    private DefaultKubernetesClient impersonate(final String token) {
+        try {
+            final Config kubeconfig = KubeConfigUtils.parseConfigFromString(getExternalKubeconfig());
+            kubeconfig.getUsers().get(0).setUser(new AuthInfoBuilder()
+                    .withToken(token)
+                    .build());
+            final String newKubeconfig = Serialization.yamlMapper().writeValueAsString(kubeconfig);
+            return new DefaultKubernetesClient(fromKubeconfig(newKubeconfig));
+        } catch (final IOException e) {
+            throw new IllegalStateException("Failed to create kubeconfig for ServiceAccount", e);
+        }
+    }
+
+    private String getServiceAccountToken(
+            final String serviceAccountNamespace,
+            final String serviceAccountName,
+            final DefaultKubernetesClient client
+    ) {
+        final ServiceAccount sa = client.inNamespace(serviceAccountNamespace).serviceAccounts().withName(serviceAccountName).get();
+        final String saName = serviceAccountNamespace + "/" + serviceAccountName;
+        if (sa == null) {
+            throw new RuntimeException(format("ServiceAccount %s not found", saName));
+        }
+        if (sa.getSecrets().isEmpty()) {
+            throw new RuntimeException(format("ServiceAccount %s has no secrets", saName));
+        }
+        final ObjectReference secretRef = sa.getSecrets().get(0);
+        final String secretNamespace = Optional.ofNullable(secretRef.getNamespace()).orElse(serviceAccountNamespace);
+        final String secretName = secretRef.getName();
+        final Secret secret = client.inNamespace(secretNamespace).secrets().withName(secretName).get();
+        if (secret == null) {
+            throw new RuntimeException(format("Secret %s/%s not found", secretNamespace, secretName));
+        }
+        if (!"kubernetes.io/service-account-token".equals(secret.getType())) {
+            throw new RuntimeException(format("Secret %s/%s is not of type kubernetes.io/service-account-token", secretNamespace, secretName));
+        }
+        return new String(Base64.getDecoder().decode(secret.getData().get("token")), UTF_8);
     }
 
 }
