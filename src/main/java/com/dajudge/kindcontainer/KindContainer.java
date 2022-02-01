@@ -293,15 +293,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         );
     }
 
-    @Override
-    public DefaultKubernetesClient getClient() {
-        return client(getExternalKubeconfig());
-    }
-
-    private DefaultKubernetesClient client(final String kubeconfig) {
-        return new DefaultKubernetesClient(fromKubeconfig(kubeconfig));
-    }
-
     private String kubeconfig;
 
     @Override
@@ -518,7 +509,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
      * @return a <code>DefaultKubernetesClient</code> for the specified service account
      */
     public DefaultKubernetesClient getClient(final String serviceAccountNamespace, final String serviceAccountName) {
-        try (final DefaultKubernetesClient client = getClient()) {
+        try (final DefaultKubernetesClient client = newClient()) {
             final String token = getServiceAccountToken(serviceAccountNamespace, serviceAccountName, client);
             return impersonate(token);
         }

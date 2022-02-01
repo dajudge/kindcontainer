@@ -24,7 +24,7 @@ public class ApiServerContainerTest {
 
     @Test
     public void starts_apiserver() {
-        try (final KubernetesClient client = StaticContainers.apiServer().getClient()) {
+        try (final KubernetesClient client = StaticContainers.apiServer().newClient()) {
             assertTrue(client.nodes().list().getItems().isEmpty());
         }
     }
