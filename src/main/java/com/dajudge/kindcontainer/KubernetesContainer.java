@@ -21,20 +21,16 @@ import com.dajudge.kindcontainer.Utils.ThrowingRunnable;
 import com.dajudge.kindcontainer.helm.Helm3Container;
 import com.dajudge.kindcontainer.kubectl.KubectlContainer;
 import com.github.dockerjava.api.command.InspectContainerResponse;
-import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import io.fabric8.kubernetes.client.internal.KubeConfigUtils;
-import io.fabric8.kubernetes.client.utils.Serialization;
-import org.jetbrains.annotations.NotNull;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
 
 import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL_IMAGE;
-import static java.lang.String.format;
-import static java.nio.charset.StandardCharsets.UTF_8;
+import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.util.Arrays.asList;
 
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
@@ -55,7 +51,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     public <R> R runWithClient(final ThrowingFunction<DefaultKubernetesClient, R, Exception> function) {
-        try (final DefaultKubernetesClient client = getClient()) {
+        try (final DefaultKubernetesClient client = newClient()) {
             try {
                 return function.apply(client);
             } catch (final Exception e) {
@@ -69,7 +65,9 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
      *
      * @return a <code>DefaultKubernetesClient</code> with cluster-admin permissions
      */
-    public abstract DefaultKubernetesClient getClient();
+    public DefaultKubernetesClient newClient() {
+        return new DefaultKubernetesClient(fromKubeconfig(getExternalKubeconfig()));
+    }
 
     /**
      * The hostname of the API server in the container's docker network.

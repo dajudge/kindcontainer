@@ -162,11 +162,6 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     }
 
     @Override
-    public DefaultKubernetesClient getClient() {
-        return new DefaultKubernetesClient(config);
-    }
-
-    @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
         waitForApiServer();
         super.containerIsStarting(containerInfo);
