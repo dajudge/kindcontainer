@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.internal.ExternalPortListeningCheck;
+import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.shaded.com.google.common.io.Files;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
@@ -39,6 +40,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.Utils.createNetwork;
 import static java.lang.String.format;
@@ -47,11 +49,12 @@ import static java.time.Duration.ZERO;
 import static java.time.Duration.ofMillis;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static java.util.Comparator.comparing;
+import static java.util.stream.Collectors.toList;
 import static org.testcontainers.utility.MountableFile.forHostPath;
 
 public class ApiServerContainer<T extends ApiServerContainer<T>> extends KubernetesContainer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(ApiServerContainer.class);
-    private static final String API_SERVER_IMAGE = "k8s.gcr.io/kube-apiserver:v1.21.1";
     private static final String PKI_BASEDIR = "/etc/kubernetes/pki";
     private static final String ETCD_PKI_BASEDIR = PKI_BASEDIR + "/etcd";
     private static final String ETCD_CLIENT_KEY = ETCD_PKI_BASEDIR + "/etcd/apiserver-client.key";
@@ -72,16 +75,20 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     private final Config config = Config.empty();
     private KeyStoreWrapper apiServerKeyPair;
 
+    /**
+     * Constructs a new <code>ApiServerContainer</code> with the latest supported Kubernetes version.
+     */
     public ApiServerContainer() {
-        this(API_SERVER_IMAGE);
+        this(Version.getLatest());
     }
 
-    public ApiServerContainer(final String apiServerImage) {
-        this(DockerImageName.parse(apiServerImage));
-    }
-
-    public ApiServerContainer(final DockerImageName apiServerImage) {
-        super(apiServerImage);
+    /**
+     * Constructs a new <code>KindContainer</code>.
+     *
+     * @param version the Kubernetes version to run.
+     */
+    public ApiServerContainer(final Version version) {
+        super(getDockerImage(version));
         final Network network = createNetwork();
         etcd = new EtcdContainer(network);
         this
@@ -98,6 +105,10 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .withNetwork(network)
                 .withNetworkAliases(INTERNAL_HOSTNAME)
                 .withPostStartupExecution(() -> configureClient(apiServerKeyPair));
+    }
+
+    private static DockerImageName getDockerImage(final Version version) {
+        return DockerImageName.parse(format("k8s.gcr.io/kube-apiserver:%s", version.descriptor.getKubernetesVersion()));
     }
 
     @Override
@@ -272,5 +283,49 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     public void stop() {
         super.stop();
         etcd.stop();
+    }
+
+    /**
+     * The available Kubernetes versions.
+     */
+    public enum Version {
+        VERSION_1_21_2(new KubernetesVersionDescriptor(1, 21, 2)),
+        VERSION_1_22_4(new KubernetesVersionDescriptor(1, 22, 4)),
+        VERSION_1_23_4(new KubernetesVersionDescriptor(1, 23, 3));
+
+        private static final Comparator<Version> COMPARE_ASCENDING = comparing(a -> a.descriptor);
+        private static final Comparator<Version> COMPARE_DESCENDING = COMPARE_ASCENDING.reversed();
+        @VisibleForTesting
+        final KubernetesVersionDescriptor descriptor;
+
+        Version(final KubernetesVersionDescriptor descriptor) {
+            this.descriptor = descriptor;
+        }
+
+        /**
+         * Returns the latest supported version.
+         *
+         * @return the latest supported version.
+         */
+        public static Version getLatest() {
+            return descending().get(0);
+        }
+
+        /**
+         * Returns the list of available versions in descending order (latest is first).
+         *
+         * @return the list of available versions in descending order (latest is first).
+         */
+        public static List<Version> descending() {
+            return Stream.of(Version.values())
+                    .sorted(COMPARE_DESCENDING)
+                    .collect(toList());
+        }
+
+
+        @Override
+        public String toString() {
+            return format("%d.%d.%d", descriptor.getMajor(), descriptor.getMinor(), descriptor.getPatch());
+        }
     }
 }

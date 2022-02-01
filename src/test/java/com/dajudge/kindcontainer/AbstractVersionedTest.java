@@ -15,42 +15,40 @@ limitations under the License.
  */
 package com.dajudge.kindcontainer;
 
-import io.fabric8.kubernetes.api.model.Node;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import java.util.Collection;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
-public class KindVersionsTest {
-    @Parameterized.Parameters
-    public static Collection<KindContainer.Version> apiServers() {
-        return KindContainer.Version.descending();
-    }
+public abstract class AbstractVersionedTest {
 
-    private final KindContainer<?> kind;
-    private final KindContainer.Version version;
+    protected final Supplier<KubernetesContainer<?>> k8sFactory;
+    protected final KubernetesVersionDescriptor version;
 
-    public KindVersionsTest(final KindContainer.Version version) {
-        kind = new KindContainer<>(version);
+    protected AbstractVersionedTest(
+            final Supplier<KubernetesContainer<?>> k8sFactory,
+            final KubernetesVersionDescriptor version
+    ) {
+        this.k8sFactory = k8sFactory;
         this.version = version;
     }
 
     @Test
     public void can_start() {
+        final KubernetesContainer<?> k8s = k8sFactory.get();
         try {
-            kind.start();
-            kind.runWithClient(client -> {
-                final Node node = client.nodes().list().getItems().get(0);
-                node.getStatus().getNodeInfo().getKubeletVersion().equals(version.descriptor.getKubernetesVersion());
+            k8s.start();
+            k8s.runWithClient(client -> {
+                assertEquals(client.getKubernetesVersion().getGitVersion(), version.getKubernetesVersion());
             });
         } catch (final Exception e) {
-            throw new AssertionError("Failed to launch kubernetes with version " + version.toString());
+            throw new AssertionError("Failed to launch kubernetes with version " + version.toString(), e);
         } finally {
-            kind.stop();
+            k8s.stop();
         }
     }
 }

@@ -26,6 +26,7 @@ import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.internal.KubeConfigUtils;
 import io.fabric8.kubernetes.client.utils.Serialization;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
@@ -91,7 +92,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
      * @param version the Kubernetes version to run.
      */
     public KindContainer(final Version version) {
-        super(version.descriptor.getImage());
+        super(getDockerImage(version));
         this.version = version;
         final Network.NetworkImpl network = createNetwork();
         this.withStartupTimeout(ofSeconds(300))
@@ -112,6 +113,10 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                 .withNetwork(network)
                 .withNetworkAliases(INTERNAL_HOSTNAME);
 
+    }
+
+    private static DockerImageName getDockerImage(final Version version) {
+        return DockerImageName.parse(format("kindest/node:%s", version.descriptor.getKubernetesVersion()));
     }
 
     @Override
@@ -424,51 +429,20 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         return self();
     }
 
-    @VisibleForTesting
-    static class KindVersionDescriptor implements Comparable<KindVersionDescriptor> {
-        private final int major, minor, patch;
-
-        KindVersionDescriptor(final int major, final int minor, final int patch) {
-            this.major = major;
-            this.minor = minor;
-            this.patch = patch;
-        }
-
-        @Override
-        public int compareTo(final KindVersionDescriptor o) {
-            if (major != o.major) {
-                return Integer.compare(major, o.major);
-            }
-            if (minor != o.minor) {
-                return Integer.compare(minor, o.minor);
-            }
-            return Integer.compare(patch, o.patch);
-        }
-
-        public DockerImageName getImage() {
-            return DockerImageName.parse(format("kindest/node:%s", getKubernetesVersion()));
-        }
-
-        @VisibleForTesting
-        String getKubernetesVersion() {
-            return format("v%d.%d.%d", major, minor, patch);
-        }
-    }
-
     /**
      * The available Kubernetes versions.
      */
     public enum Version {
-        VERSION_1_21_2(new KindVersionDescriptor(1, 21, 2)),
-        VERSION_1_22_4(new KindVersionDescriptor(1, 22, 4)),
-        VERSION_1_23_4(new KindVersionDescriptor(1, 23, 3));
+        VERSION_1_21_2(new KubernetesVersionDescriptor(1, 21, 2)),
+        VERSION_1_22_4(new KubernetesVersionDescriptor(1, 22, 4)),
+        VERSION_1_23_4(new KubernetesVersionDescriptor(1, 23, 3));
 
         private static final Comparator<Version> COMPARE_ASCENDING = comparing(a -> a.descriptor);
         private static final Comparator<Version> COMPARE_DESCENDING = COMPARE_ASCENDING.reversed();
         @VisibleForTesting
-        final KindVersionDescriptor descriptor;
+        final KubernetesVersionDescriptor descriptor;
 
-        Version(final KindVersionDescriptor descriptor) {
+        Version(final KubernetesVersionDescriptor descriptor) {
             this.descriptor = descriptor;
         }
 
@@ -495,7 +469,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
         @Override
         public String toString() {
-            return format("%d.%d.%d", descriptor.major, descriptor.minor, descriptor.patch);
+            return format("%d.%d.%d", descriptor.getMajor(), descriptor.getMinor(), descriptor.getPatch());
         }
     }
 
