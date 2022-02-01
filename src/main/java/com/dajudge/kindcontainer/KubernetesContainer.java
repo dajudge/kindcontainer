@@ -16,48 +16,60 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
+import com.dajudge.kindcontainer.Utils.ThrowingFunction;
 import com.dajudge.kindcontainer.Utils.ThrowingRunnable;
 import com.dajudge.kindcontainer.helm.Helm3Container;
 import com.dajudge.kindcontainer.kubectl.KubectlContainer;
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.internal.KubeConfigUtils;
+import io.fabric8.kubernetes.client.utils.Serialization;
+import org.jetbrains.annotations.NotNull;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.function.Function;
+import java.io.IOException;
+import java.util.*;
 
 import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL_IMAGE;
+import static java.lang.String.format;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
-    public abstract DefaultKubernetesClient getClient();
-
     private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
     private Helm3Container<?> helm3;
     private KubectlContainer<?> kubectl;
 
     public KubernetesContainer(final DockerImageName dockerImageName) {
         super(dockerImageName);
-        this.withExposedPorts(getInternalPort())
-                .waitingFor(new WaitForPortsExternallyStrategy());
+        this.withExposedPorts(getInternalPort()).waitingFor(new WaitForPortsExternallyStrategy());
     }
 
-    public void runWithClient(final Consumer<DefaultKubernetesClient> callable) {
+    public void runWithClient(final ThrowingConsumer<DefaultKubernetesClient, Exception> consumer) {
         runWithClient(client -> {
-            callable.accept(client);
+            consumer.accept(client);
             return null;
         });
     }
 
-    public <R> R runWithClient(final Function<DefaultKubernetesClient, R> callable) {
+    public <R> R runWithClient(final ThrowingFunction<DefaultKubernetesClient, R, Exception> function) {
         try (final DefaultKubernetesClient client = getClient()) {
-            return callable.apply(client);
+            try {
+                return function.apply(client);
+            } catch (final Exception e) {
+                throw new RuntimeException("Error running with client", e);
+            }
         }
     }
+
+    /**
+     * Returns a fabric8 Kubernetes client with administrative access.
+     *
+     * @return a <code>DefaultKubernetesClient</code> with cluster-admin permissions
+     */
+    public abstract DefaultKubernetesClient getClient();
 
     /**
      * The hostname of the API server in the container's docker network.
@@ -98,24 +110,28 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
 
     public synchronized KubectlContainer<?> kubectl() {
         if (kubectl == null) {
-            kubectl = new KubectlContainer<>(DEFAULT_KUBECTL_IMAGE, this::getInternalKubeconfig)
-                    .withNetwork(getNetwork());
+            kubectl = new KubectlContainer<>(DEFAULT_KUBECTL_IMAGE, this::getInternalKubeconfig).withNetwork(getNetwork());
             kubectl.start();
         }
         return kubectl;
     }
 
     private void runPostAvailabilityExecutions() {
-        postStartupExecutions.forEach(
-                r -> {
-                    try {
-                        r.run();
-                    } catch (final Exception e) {
-                        throw new RuntimeException("Failed to execute post startup runnable", e);
-                    }
-                }
-        );
+        postStartupExecutions.forEach(r -> {
+            try {
+                r.run();
+            } catch (final Exception e) {
+                throw new RuntimeException("Failed to execute post startup runnable", e);
+            }
+        });
     }
+
+    /**
+     * Returns a kubeconfig that can be used for access from the outside.
+     *
+     * @return the kubeconfig
+     */
+    public abstract String getExternalKubeconfig();
 
     @Override
     public void stop() {

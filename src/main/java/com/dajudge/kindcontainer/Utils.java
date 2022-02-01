@@ -120,11 +120,15 @@ public final class Utils {
         void run() throws E;
     }
 
+    public interface ThrowingFunction<I, O, E extends Exception> {
+        O apply(I i) throws E;
+    }
+
     public interface ThrowingConsumer<T, E extends Exception> {
         void accept(T t) throws E;
     }
 
-    public interface ThrowingCallable<T, E extends Exception> {
-        T call() throws E;
+    public interface ThrowingSupplier<T, E extends Exception> {
+        T get() throws E;
     }
 }
