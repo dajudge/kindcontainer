@@ -5,6 +5,8 @@ import com.dajudge.kindcontainer.Utils.ThrowingRunnable;
 import com.dajudge.kindcontainer.client.TinyK8sClient;
 import com.dajudge.kindcontainer.client.config.KubeConfig;
 import com.dajudge.kindcontainer.client.config.UserSpec;
+import com.dajudge.kindcontainer.client.model.base.Metadata;
+import com.dajudge.kindcontainer.client.model.v1.Namespace;
 import com.dajudge.kindcontainer.client.model.v1.ObjectReference;
 import com.dajudge.kindcontainer.client.model.v1.Secret;
 import com.dajudge.kindcontainer.client.model.v1.ServiceAccount;
@@ -171,4 +173,26 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         return new String(Base64.getDecoder().decode(secret.getData().get("token")), UTF_8);
     }
 
+    /**
+     * Creates a new namespace.
+     *
+     * @param name the name of the namespace to create
+     * @return the created namespace
+     */
+    public String createNamespace(final String name) {
+        final Namespace namespace = new Namespace();
+        namespace.setMetadata(new Metadata());
+        namespace.getMetadata().setName(name);
+        client().v1().namespaces().create(namespace);
+        return name;
+    }
+
+    /**
+     * Creates a new namespace with a random name.
+     *
+     * @return the created namespace
+     */
+    public String createNamespace() {
+        return createNamespace(UUID.randomUUID().toString());
+    }
 }

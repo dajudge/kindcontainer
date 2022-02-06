@@ -28,17 +28,6 @@ final class TestUtils {
     private TestUtils() {
     }
 
-    static String createNewNamespace(final KubernetesClient client) {
-        final Namespace namespace = new NamespaceBuilder()
-                .withNewMetadata()
-                .withName(randomIdentifier())
-                .endMetadata()
-                .build();
-        client.namespaces().create(namespace);
-        return namespace.getMetadata().getName();
-    }
-
-    @NotNull
     static String randomIdentifier() {
         final String alphabet = "abcdefghijklmnopqrstuvwxyz";
         return alphabet.charAt(RANDOM.nextInt(alphabet.length()))

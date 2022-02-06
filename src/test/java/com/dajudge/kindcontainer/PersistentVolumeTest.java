@@ -1,35 +1,30 @@
 package com.dajudge.kindcontainer;
 
 import io.fabric8.kubernetes.api.model.*;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.HashMap;
 
+import static com.dajudge.kindcontainer.StaticContainers.kind;
 import static com.dajudge.kindcontainer.TestUtils.*;
 import static java.time.Duration.ofSeconds;
 import static org.awaitility.Awaitility.await;
 
 public class PersistentVolumeTest {
 
-    private String namespace;
-
-    @Before
-    public void before() {
-        namespace = runWithClient(StaticContainers.kind(), TestUtils::createNewNamespace);
-    }
+    private final String namespace = kind().createNamespace();
 
     @Test
     public void can_start_pod_with_pvc() {
-        final PersistentVolumeClaim claim = runWithClient(StaticContainers.kind(), client -> {
+        final PersistentVolumeClaim claim = runWithClient(kind(), client -> {
             return client.persistentVolumeClaims().inNamespace(namespace).create(buildClaim());
         });
-        final Pod pod = runWithClient(StaticContainers.kind(), client -> {
+        final Pod pod = runWithClient(kind(), client -> {
             return client.pods().inNamespace(namespace).create(buildPod(claim));
         });
         await("testpod")
                 .timeout(ofSeconds(300))
-                .until(() -> runWithClient(StaticContainers.kind(), client -> {
+                .until(() -> runWithClient(kind(), client -> {
                     return isRunning(client, pod);
                 }));
     }

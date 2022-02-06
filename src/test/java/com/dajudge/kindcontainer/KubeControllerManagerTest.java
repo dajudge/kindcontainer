@@ -35,7 +35,7 @@ public class KubeControllerManagerTest {
         // When a new namespace is created, the controller manager takes care of creating the default
         // ServiceAccount
         runWithClient(API_SERVER, client -> {
-            final String namespace = TestUtils.createNewNamespace(client);
+            final String namespace = API_SERVER.createNamespace();
             // Make sure default SA pop up
             Awaitility.await("default SA")
                     .pollInSameThread()
@@ -64,7 +64,7 @@ public class KubeControllerManagerTest {
         // Namespaces get a finalizer "kubernetes" when they're created. The controller manager
         // takes care of removing it when all related resources are destroyed.
         runWithClient(API_SERVER, client -> {
-            final String namespace = TestUtils.createNewNamespace(client);
+            final String namespace = API_SERVER.createNamespace();
             client.namespaces().withName(namespace).delete();
             // Namespace should be gone eventually
             Awaitility.await()
