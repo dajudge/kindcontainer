@@ -16,15 +16,12 @@ limitations under the License.
 
 package com.dajudge.kindcontainer;
 
-import io.fabric8.kubernetes.api.model.IntOrString;
-import io.fabric8.kubernetes.api.model.Pod;
-import io.fabric8.kubernetes.api.model.ServiceBuilder;
-import io.fabric8.kubernetes.api.model.ServicePortBuilder;
+import io.fabric8.kubernetes.api.model.*;
 import org.junit.Test;
 
 import java.util.HashMap;
 
-import static com.dajudge.kindcontainer.TestUtils.createNewNamespace;
+import static com.dajudge.kindcontainer.StaticContainers.kind;
 import static com.dajudge.kindcontainer.TestUtils.createSimplePod;
 import static java.time.Duration.ofSeconds;
 import static org.awaitility.Awaitility.await;
@@ -32,10 +29,11 @@ import static org.awaitility.Awaitility.await;
 public class NodePortTest {
     @Test
     public void exposes_node_port() {
-        final Pod pod = StaticContainers.kind().runWithClient(client -> {
-            return createSimplePod(client, createNewNamespace(client));
+        final Pod pod = kind().runWithClient(client -> {
+            final Namespace namespace = kind().createNamespace();
+            return createSimplePod(client, namespace.getMetadata().getName());
         });
-        StaticContainers.kind().runWithClient(client -> {
+        kind().runWithClient(client -> {
             client.services().create(new ServiceBuilder()
                     .withNewMetadata()
                     .withName("nginx")
@@ -56,7 +54,7 @@ public class NodePortTest {
                     .build());
             await("testpod")
                     .timeout(ofSeconds(300))
-                    .until(TestUtils.http("http://localhost:" + StaticContainers.kind().getMappedPort(30000)));
+                    .until(TestUtils.http("http://localhost:" + kind().getMappedPort(30000)));
 
         });
     }

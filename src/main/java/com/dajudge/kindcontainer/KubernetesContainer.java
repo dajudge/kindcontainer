@@ -21,6 +21,8 @@ import com.dajudge.kindcontainer.Utils.ThrowingRunnable;
 import com.dajudge.kindcontainer.helm.Helm3Container;
 import com.dajudge.kindcontainer.kubectl.KubectlContainer;
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import io.fabric8.kubernetes.api.model.Namespace;
+import io.fabric8.kubernetes.api.model.NamespaceBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -28,6 +30,7 @@ import org.testcontainers.utility.DockerImageName;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.UUID;
 
 import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL_IMAGE;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
@@ -164,5 +167,30 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
         runPostAvailabilityExecutions();
         super.containerIsStarting(containerInfo);
+    }
+
+    /**
+     * Creates a new namespace.
+     *
+     * @param name the name of the namespace to create
+     * @return the created namespace
+     */
+    public Namespace createNamespace(final String name) {
+        return runWithClient(client -> {
+            return client.namespaces().create(new NamespaceBuilder()
+                    .withNewMetadata()
+                    .withName(UUID.randomUUID().toString())
+                    .endMetadata()
+                    .build());
+        });
+    }
+
+    /**
+     * Creates a new namespace with a random name.
+     *
+     * @return the created namespace
+     */
+    public Namespace createNamespace() {
+        return createNamespace(UUID.randomUUID().toString());
     }
 }

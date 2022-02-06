@@ -22,7 +22,6 @@ import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.Config;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.utils.Serialization;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -330,5 +329,23 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
         public String toString() {
             return format("%d.%d.%d", descriptor.getMajor(), descriptor.getMinor(), descriptor.getPatch());
         }
+    }
+
+    @Override
+    public Namespace createNamespace(final String name) {
+        final Namespace namespace = super.createNamespace(name);
+        runWithClient(client -> {
+            // ApiServerConatiner doesn't have the controller-manager which would
+            // take care of creating the default service account, so we'll do the
+            // job ourselves.
+            client.inNamespace(namespace.getMetadata().getName())
+                    .serviceAccounts()
+                    .create(new ServiceAccountBuilder()
+                            .withNewMetadata()
+                            .withName("default")
+                            .endMetadata()
+                            .build());
+        });
+        return namespace;
     }
 }

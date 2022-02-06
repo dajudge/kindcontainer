@@ -16,9 +16,14 @@ limitations under the License.
 
 package com.dajudge.kindcontainer;
 
+import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.Pod;
 import org.junit.Test;
 
+import java.util.Objects;
+
+import static com.dajudge.kindcontainer.StaticContainers.apiServer;
+import static com.dajudge.kindcontainer.StaticContainers.kind;
 import static com.dajudge.kindcontainer.TestUtils.createSimplePod;
 import static com.dajudge.kindcontainer.TestUtils.isRunning;
 import static java.time.Duration.ofSeconds;
@@ -26,14 +31,30 @@ import static org.awaitility.Awaitility.await;
 
 public class PodStartupTest {
     @Test
-    public void can_start_pod() {
-        final Pod pod = StaticContainers.kind().runWithClient(client -> {
-            return createSimplePod(client, TestUtils.createNewNamespace(client));
+    public void can_start_pod_in_kind() {
+        final Namespace namespace = kind().createNamespace();
+        final Pod pod = kind().runWithClient(client -> {
+            return createSimplePod(client, namespace.getMetadata().getName());
         });
         await("testpod")
                 .timeout(ofSeconds(300))
-                .until(() -> StaticContainers.kind().runWithClient(client -> {
+                .until(() -> kind().runWithClient(client -> {
                     return isRunning(client, pod);
                 }));
+    }
+
+    @Test
+    public void can_create_pod_in_apiserver() {
+        final Namespace namespace = apiServer().createNamespace();
+        final Pod pod = apiServer().runWithClient(client -> {
+            return createSimplePod(client, namespace.getMetadata().getName());
+        });
+        await("testpod")
+                .until(() -> apiServer().runWithClient(client -> {
+                    return client.pods()
+                            .inNamespace(namespace.getMetadata().getName())
+                            .withName(pod.getMetadata().getName())
+                            .get();
+                }), Objects::nonNull);
     }
 }

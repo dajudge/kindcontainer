@@ -17,11 +17,11 @@ limitations under the License.
 package com.dajudge.kindcontainer;
 
 import io.fabric8.kubernetes.api.model.*;
-import org.junit.Before;
 import org.junit.Test;
 
 import java.util.HashMap;
 
+import static com.dajudge.kindcontainer.StaticContainers.kind;
 import static com.dajudge.kindcontainer.TestUtils.isRunning;
 import static com.dajudge.kindcontainer.TestUtils.randomIdentifier;
 import static java.time.Duration.ofSeconds;
@@ -29,24 +29,19 @@ import static org.awaitility.Awaitility.await;
 
 public class PersistentVolumeTest {
 
-    private String namespace;
-
-    @Before
-    public void before() {
-        namespace = StaticContainers.kind().runWithClient(TestUtils::createNewNamespace);
-    }
+    private final String namespace = kind().createNamespace().getMetadata().getName();
 
     @Test
     public void can_start_pod_with_pvc() {
-        final PersistentVolumeClaim claim = StaticContainers.kind().runWithClient(client -> {
+        final PersistentVolumeClaim claim = kind().runWithClient(client -> {
             return client.persistentVolumeClaims().inNamespace(namespace).create(buildClaim());
         });
-        final Pod pod = StaticContainers.kind().runWithClient(client -> {
+        final Pod pod = kind().runWithClient(client -> {
             return client.pods().inNamespace(namespace).create(buildPod(claim));
         });
         await("testpod")
                 .timeout(ofSeconds(300))
-                .until(() -> StaticContainers.kind().runWithClient(client -> {
+                .until(() -> kind().runWithClient(client -> {
                     return isRunning(client, pod);
                 }));
     }
