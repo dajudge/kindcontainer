@@ -8,18 +8,17 @@ import org.junit.Test;
 
 import java.util.HashMap;
 
-import static com.dajudge.kindcontainer.TestUtils.createNewNamespace;
-import static com.dajudge.kindcontainer.TestUtils.createSimplePod;
+import static com.dajudge.kindcontainer.TestUtils.*;
 import static java.time.Duration.ofSeconds;
 import static org.awaitility.Awaitility.await;
 
 public class NodePortTest {
     @Test
     public void exposes_node_port() {
-        final Pod pod = StaticContainers.kind().runWithClient(client -> {
+        final Pod pod = runWithClient(StaticContainers.kind(), client -> {
             return createSimplePod(client, createNewNamespace(client));
         });
-        StaticContainers.kind().runWithClient(client -> {
+        runWithClient(StaticContainers.kind(), client -> {
             client.services().create(new ServiceBuilder()
                     .withNewMetadata()
                     .withName("nginx")

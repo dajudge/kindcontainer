@@ -1,6 +1,5 @@
 package com.dajudge.kindcontainer.pki;
 
-import com.dajudge.kindcontainer.Utils;
 import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
 import org.testcontainers.shaded.org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x500.X500Name;

@@ -6,6 +6,7 @@ import org.junit.runners.Parameterized;
 
 import java.util.function.Supplier;
 
+import static com.dajudge.kindcontainer.TestUtils.runWithClient;
 import static org.junit.Assert.assertEquals;
 
 @RunWith(Parameterized.class)
@@ -27,11 +28,11 @@ public abstract class AbstractVersionedTest {
         final KubernetesContainer<?> k8s = k8sFactory.get();
         try {
             k8s.start();
-            k8s.runWithClient(client -> {
+            runWithClient(k8s, client -> {
                 assertEquals(client.getKubernetesVersion().getGitVersion(), version.getKubernetesVersion());
             });
         } catch (final Exception e) {
-            throw new AssertionError("Failed to launch kubernetes with version " + version.toString(), e);
+            throw new AssertionError("Failed to launch kubernetes with version " + version.getKubernetesVersion(), e);
         } finally {
             k8s.stop();
         }

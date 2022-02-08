@@ -1,46 +1,44 @@
 package com.dajudge.kindcontainer;
 
-import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
-import com.dajudge.kindcontainer.Utils.ThrowingFunction;
+import com.dajudge.kindcontainer.client.TinyK8sClient;
+import com.dajudge.kindcontainer.client.model.v1.Node;
+import com.dajudge.kindcontainer.client.model.v1.NodeCondition;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import com.github.dockerjava.api.model.Volume;
-import io.fabric8.kubernetes.api.model.*;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import io.fabric8.kubernetes.client.KubernetesClientException;
-import io.fabric8.kubernetes.client.internal.KubeConfigUtils;
-import io.fabric8.kubernetes.client.utils.Serialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.Network;
 import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.TemplateHelpers.*;
 import static com.dajudge.kindcontainer.Utils.createNetwork;
 import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
-import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
+import static com.github.dockerjava.api.model.AccessMode.ro;
 import static java.lang.String.format;
 import static java.lang.String.join;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
+import static java.util.concurrent.TimeUnit.MILLISECONDS;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
-import static org.testcontainers.containers.BindMode.READ_ONLY;
 
 /**
  * A Testcontainer for testing against Kubernetes using
@@ -57,7 +55,9 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final String INTERNAL_HOSTNAME = "kindcontainer";
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final String CACERTS_INSTALL_DIR = "/usr/local/share/ca-certificates";
-    private final String volumeName = "kindcontainer-" + UUID.randomUUID().toString();
+    private static final Pattern PROVISIONING_TRIGGER_PATTERN = Pattern.compile(".*Reached target .*Multi-User System.*");
+    private final CountDownLatch provisioningLatch = new CountDownLatch(1);
+    private final String volumeName = "kindcontainer-" + UUID.randomUUID();
     private final Version version;
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
@@ -81,16 +81,25 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         this.version = version;
         final Network.NetworkImpl network = createNetwork();
         this.withStartupTimeout(ofSeconds(300))
+                .withLogConsumer(outputFrame -> {
+                    if (PROVISIONING_TRIGGER_PATTERN.matcher(outputFrame.getUtf8String()).matches()) {
+                        provisioningLatch.countDown();
+                    }
+                })
                 .withCreateContainerCmdModifier(cmd -> {
                     final Volume varVolume = new Volume("/var/lib/containerd");
+                    final Volume modVolume = new Volume("/lib/modules");
                     cmd.withEntrypoint("/usr/local/bin/entrypoint", "/sbin/init")
                             .withVolumes(varVolume)
-                            .withBinds(new Bind(volumeName, varVolume, true));
+                            .withTty(true)
+                            .withBinds(
+                                    new Bind(volumeName, varVolume, true),
+                                    new Bind("/lib/modules", modVolume, ro)
+                            );
 
                 })
                 .withEnv("KUBECONFIG", "/etc/kubernetes/admin.conf")
                 .withPrivilegedMode(true)
-                .withFileSystemBind("/lib/modules", "/lib/modules", READ_ONLY)
                 .withTmpFs(new HashMap<String, String>() {{
                     put("/run", "rw");
                     put("/tmp", "rw");
@@ -112,18 +121,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     @Override
     public int getInternalPort() {
         return INTERNAL_API_SERVER_PORT;
-    }
-
-    @Override
-    public String getInternalKubeconfig() {
-        try {
-            final Config config = KubeConfigUtils.parseConfigFromString(getExternalKubeconfig());
-            final String url = format("https://%s:%d", INTERNAL_HOSTNAME, INTERNAL_API_SERVER_PORT);
-            config.getClusters().get(0).getCluster().setServer(url);
-            return Serialization.yamlMapper().writeValueAsString(config);
-        } catch (final IOException e) {
-            throw new RuntimeException("Failed to serialize kubeconfig");
-        }
     }
 
     /**
@@ -150,6 +147,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
+        waitForProvisioningSignal();
         try {
             final Map<String, String> params = prepareTemplateParams();
             updateCaCertificates();
@@ -162,6 +160,17 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
             throw new RuntimeException("Failed to initialize node", e);
         }
         super.containerIsStarting(containerInfo);
+    }
+
+    private void waitForProvisioningSignal() {
+        try {
+            // https://github.com/kubernetes-sigs/kind/pull/2421
+            if (!provisioningLatch.await(60, SECONDS)) {
+                throw new IllegalStateException("Container init does not seem to have started.");
+            }
+        } catch (final InterruptedException e) {
+            throw new RuntimeException("Interrupted while waiting for provisioning signal.");
+        }
     }
 
     private Map<String, String> prepareTemplateParams() throws IOException, InterruptedException {
@@ -206,18 +215,27 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     private void kubeadmInit(final Map<String, String> params) throws IOException, InterruptedException {
-        final String kubeadmConfig = templateResource(this, "kubeadm.yaml", params, KUBEADM_CONFIG);
-        exec(asList(
-                "kubeadm", "init",
-                "--skip-phases=preflight",
-                // specify our generated config file
-                "--config=" + kubeadmConfig,
-                "--skip-token-print",
-                // Use predetermined node name
-                "--node-name=" + INTERNAL_HOSTNAME,
-                // increase verbosity for debugging
-                "--v=6"
-        ));
+        try {
+            final String kubeadmConfig = templateResource(this, "kubeadm.yaml", params, KUBEADM_CONFIG);
+            exec(asList(
+                    "kubeadm", "init",
+                    "--skip-phases=preflight",
+                    // specify our generated config file
+                    "--config=" + kubeadmConfig,
+                    "--skip-token-print",
+                    // Use predetermined node name
+                    "--node-name=" + INTERNAL_HOSTNAME,
+                    // increase verbosity for debugging
+                    "--v=6"
+            ));
+        } catch (final RuntimeException | IOException | InterruptedException e) {
+            try {
+                LOG.error("{}", prefixLines(execInContainer("journalctl").getStdout(), "JOURNAL: "));
+            } catch (final IOException | InterruptedException ex) {
+                LOG.error("Could not retrieve journal.", ex);
+            }
+            throw e;
+        }
     }
 
     private void installStorage() throws IOException, InterruptedException {
@@ -253,12 +271,12 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         final int exitCode = execResult.getExitCode();
         if (exitCode == 0) {
             LOG.debug("\"{}\" exited with status code {}", cmdString, exitCode);
-            LOG.debug("{}", execResult.getStdout().replaceAll("(?m)^", "STDOUT: "));
-            LOG.debug("{}", execResult.getStderr().replaceAll("(?m)^", "STDERR: "));
+            LOG.debug("{}", prefixLines(execResult.getStdout(), "STDOUT: "));
+            LOG.debug("{}", prefixLines(execResult.getStderr(), "STDERR: "));
         } else {
             LOG.error("\"{}\" exited with status code {}", cmdString, exitCode);
-            LOG.error("{}", execResult.getStdout().replaceAll("(?m)^", "STDOUT: "));
-            LOG.error("{}", execResult.getStderr().replaceAll("(?m)^", "STDERR: "));
+            LOG.error("{}", prefixLines(execResult.getStdout(), "STDOUT: "));
+            LOG.error("{}", prefixLines(execResult.getStderr(), "STDERR: "));
             throw new IllegalStateException(cmdString + " exited with status code " + execResult);
         }
     }
@@ -278,29 +296,24 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         );
     }
 
-    private String kubeconfig;
+    @Override
+    public String getExternalKubeconfig() {
+        return getKubeconfig(format("https://%s:%s", getHost(), getMappedPort(INTERNAL_API_SERVER_PORT)));
+    }
 
     @Override
-    public synchronized String getExternalKubeconfig() {
-        if (kubeconfig == null) {
-            kubeconfig = patchKubeConfig(copyFileFromContainer(
-                    "/etc/kubernetes/admin.conf",
-                    Utils::readString
-            ));
-        }
-        return kubeconfig;
+    public String getInternalKubeconfig() {
+        return getKubeconfig(format("https://%s:%d", INTERNAL_HOSTNAME, INTERNAL_API_SERVER_PORT));
     }
 
     @SuppressWarnings("unchecked")
-    private String patchKubeConfig(final String kubeConfig) {
-        final Map<String, Object> kubeConfigMap = YAML.load(kubeConfig);
+    private synchronized String getKubeconfig(final String server) {
+        final String kubeconfig = copyFileFromContainer("/etc/kubernetes/admin.conf", Utils::readString);
+        final Map<String, Object> kubeConfigMap = YAML.load(kubeconfig);
         final List<Map<String, Object>> clusters = (List<Map<String, Object>>) kubeConfigMap.get("clusters");
         final Map<String, Object> firstCluster = clusters.iterator().next();
         final Map<String, Object> cluster = (Map<String, Object>) firstCluster.get("cluster");
-        final String newServerEndpoint = format("https://%s:%s", getHost(), getMappedPort(INTERNAL_API_SERVER_PORT));
-        final String server = cluster.get("server").toString();
-        LOG.debug("Creating kubeconfig with server {} instead of {}", newServerEndpoint, server);
-        cluster.put("server", newServerEndpoint);
+        cluster.put("server", server);
         return YAML.dump(kubeConfigMap);
     }
 
@@ -333,50 +346,33 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     private void waitForNodeReady() {
-        final Node readyNode = waitUntilNotNull(
-                findReadyNode(),
-                startupTimeout.toMillis(),
-                "Waiting for a node to become ready...",
-                () -> {
-                    dumpDebuggingInfo();
-                    return new IllegalStateException("No node became ready");
-                }
-        );
+        LOG.info("Waiting for a node to become ready...");
+        final Node readyNode = Awaitility.await("Ready node")
+                .pollInSameThread()
+                .pollDelay(0, SECONDS)
+                .pollInterval(100, MILLISECONDS)
+                .ignoreExceptions()
+                .timeout(startupTimeout)
+                .until(this::findReadyNode, Objects::nonNull);
         LOG.info("Node ready: {}", readyNode.getMetadata().getName());
     }
 
-    private void dumpDebuggingInfo() {
-        runWithClient(client -> {
-            client.nodes().list().getItems().forEach(it -> LOG.info("{}", it));
-            client.pods().list().getItems().forEach(it -> LOG.info("{}", it));
-            client.pods().list().getItems().stream()
-                    .filter(it -> it.getMetadata().getName().startsWith("kindnet-"))
-                    .forEach(it -> {
-                        final String podLog = client.pods()
-                                .inNamespace(it.getMetadata().getNamespace())
-                                .withName(it.getMetadata().getName()).getLog();
-                        LOG.info("{}/{}:\n{}", it.getMetadata().getNamespace(), it.getMetadata().getName(), podLog);
-                    });
-        });
-    }
-
-    private Supplier<Node> findReadyNode() {
+    private Node findReadyNode() {
         final Predicate<NodeCondition> isReadyStatus = cond ->
                 "Ready".equals(cond.getType()) && "True".equals(cond.getStatus());
         final Predicate<Node> nodeIsReady = node -> node.getStatus().getConditions().stream()
                 .anyMatch(isReadyStatus);
-        return () -> runWithClient(client -> {
-            try {
-                return client.nodes().list().getItems().stream()
-                        .peek(it -> LOG.trace("{} -> {}", it.getMetadata().getName(), it.getStatus().getConditions()))
-                        .filter(nodeIsReady)
-                        .findAny()
-                        .orElse(null);
-            } catch (final KubernetesClientException e) {
-                LOG.debug("Failed to list ready nodes", e);
-                return null;
-            }
-        });
+        final TinyK8sClient client = client();
+        try {
+            return client.v1().nodes().list().getItems().stream()
+                    .peek(it -> LOG.trace("{} -> {}", it.getMetadata().getName(), it.getStatus().getConditions()))
+                    .filter(nodeIsReady)
+                    .findAny()
+                    .orElse(null);
+        } catch (final Exception e) {
+            LOG.info("Failed to list ready nodes", e);
+            return null;
+        }
     }
 
     /**
@@ -445,98 +441,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         }
     }
 
-    /**
-     * Provides a <code>DefaultKubernetesClient</code> for the specified <code>ServiceAccount</code> to a piece of code.
-     *
-     * @param serviceAccountNamespace the namespace of the <code>ServiceAccount</code> to impersonate
-     * @param serviceAccountName      the name of the <code>ServiceAccount</code> to impersonate
-     * @param consumer                the <code>ThrowingConsumer</code> to execute
-     */
-    public void runWithClient(
-            final String serviceAccountNamespace,
-            final String serviceAccountName,
-            final ThrowingConsumer<DefaultKubernetesClient, Exception> consumer
-    ) {
-        runWithClient(serviceAccountNamespace, serviceAccountName, client -> {
-            consumer.accept(client);
-            return null;
-        });
+    private static String prefixLines(String stdout, String prefix) {
+        return stdout.replaceAll("(?m)^", prefix);
     }
-
-    /**
-     * Provides a <code>DefaultKubernetesClient</code> for the specified <code>ServiceAccount</code> to a piece of code.
-     *
-     * @param serviceAccountNamespace the namespace of the <code>ServiceAccount</code> to impersonate
-     * @param serviceAccountName      the name of the <code>ServiceAccount</code> to impersonate
-     * @param function                the <code>ThrowingFunction</code> to execute
-     * @param <R>                     the return type
-     * @return the return value of the function
-     */
-    public <R> R runWithClient(
-            final String serviceAccountNamespace,
-            final String serviceAccountName,
-            final ThrowingFunction<DefaultKubernetesClient, R, Exception> function
-    ) {
-        try (final DefaultKubernetesClient client = getClient(serviceAccountNamespace, serviceAccountName)) {
-            try {
-                return function.apply(client);
-            } catch (final Exception e) {
-                throw new RuntimeException("Error running with client", e);
-            }
-        }
-    }
-
-    /**
-     * Returns a fabric8 Kubernetes client for a given <code>ServiceAccount</code>.
-     *
-     * @param serviceAccountNamespace the namespace of the <code>ServiceAccount</code> to impersonate
-     * @param serviceAccountName      the name of the <code>ServiceAccount</code> to impersonate
-     * @return a <code>DefaultKubernetesClient</code> for the specified service account
-     */
-    public DefaultKubernetesClient getClient(final String serviceAccountNamespace, final String serviceAccountName) {
-        try (final DefaultKubernetesClient client = newClient()) {
-            final String token = getServiceAccountToken(serviceAccountNamespace, serviceAccountName, client);
-            return impersonate(token);
-        }
-    }
-
-    private DefaultKubernetesClient impersonate(final String token) {
-        try {
-            final Config kubeconfig = KubeConfigUtils.parseConfigFromString(getExternalKubeconfig());
-            kubeconfig.getUsers().get(0).setUser(new AuthInfoBuilder()
-                    .withToken(token)
-                    .build());
-            final String newKubeconfig = Serialization.yamlMapper().writeValueAsString(kubeconfig);
-            return new DefaultKubernetesClient(fromKubeconfig(newKubeconfig));
-        } catch (final IOException e) {
-            throw new IllegalStateException("Failed to create kubeconfig for ServiceAccount", e);
-        }
-    }
-
-    private String getServiceAccountToken(
-            final String serviceAccountNamespace,
-            final String serviceAccountName,
-            final DefaultKubernetesClient client
-    ) {
-        final ServiceAccount sa = client.inNamespace(serviceAccountNamespace).serviceAccounts().withName(serviceAccountName).get();
-        final String saName = serviceAccountNamespace + "/" + serviceAccountName;
-        if (sa == null) {
-            throw new RuntimeException(format("ServiceAccount %s not found", saName));
-        }
-        if (sa.getSecrets().isEmpty()) {
-            throw new RuntimeException(format("ServiceAccount %s has no secrets", saName));
-        }
-        final ObjectReference secretRef = sa.getSecrets().get(0);
-        final String secretNamespace = Optional.ofNullable(secretRef.getNamespace()).orElse(serviceAccountNamespace);
-        final String secretName = secretRef.getName();
-        final Secret secret = client.inNamespace(secretNamespace).secrets().withName(secretName).get();
-        if (secret == null) {
-            throw new RuntimeException(format("Secret %s/%s not found", secretNamespace, secretName));
-        }
-        if (!"kubernetes.io/service-account-token".equals(secret.getType())) {
-            throw new RuntimeException(format("Secret %s/%s is not of type kubernetes.io/service-account-token", secretNamespace, secretName));
-        }
-        return new String(Base64.getDecoder().decode(secret.getData().get("token")), UTF_8);
-    }
-
 }
