@@ -3,7 +3,6 @@ plugins {
     id "java-library"
     id "maven-publish"
     id "com.palantir.git-version" version "0.12.2"
-    id "com.github.hierynomus.license" version "0.16.1"
 }
 
 sourceCompatibility = 1.8
@@ -48,8 +47,4 @@ test {
     testLogging {
         showStandardStreams = true
     }
-}
-
-license {
-    header file("${project.rootDir}/HEADER")
 }
