@@ -111,8 +111,10 @@ public class HttpSupport {
                     MediaType.get("application/json"),
                     JSON_MAPPER.writeValueAsString(requestBody)
             );
+            final String url = format("%s%s", masterUrl, path);
+            LOG.debug("{} {}", method, url);
             final Response result = client.newCall(new Request.Builder()
-                    .url(format("%s%s", masterUrl, path))
+                    .url(url)
                     .method(method, wrappedRequestBody)
                     .build()).execute();
             final ResponseBody body = result.body();
@@ -125,7 +127,7 @@ public class HttpSupport {
                     if (result.code() == 404) {
                         return Watch.CLOSED;
                     }
-                    final String bodyString = body == null ? null : body.toString();
+                    final String bodyString = body == null ? null : body.string();
                     throw new RuntimeException("HTTP request failed with status " + result.code() + ": " + bodyString);
                 } finally {
                     if (body != null) {
