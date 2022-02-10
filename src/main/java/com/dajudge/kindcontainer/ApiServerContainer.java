@@ -3,6 +3,7 @@ package com.dajudge.kindcontainer;
 import com.dajudge.kindcontainer.client.KubeConfigUtils;
 import com.dajudge.kindcontainer.client.TinyK8sClient;
 import com.dajudge.kindcontainer.client.config.*;
+import com.dajudge.kindcontainer.kubecontrollermanager.KubeControllerManager;
 import com.dajudge.kindcontainer.pki.CertAuthority;
 import com.dajudge.kindcontainer.pki.KeyStoreWrapper;
 import com.github.dockerjava.api.command.CreateContainerCmd;
@@ -54,6 +55,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     private final CertAuthority apiServerCa = new CertAuthority(System::currentTimeMillis, "CN=API Server CA");
     private final EtcdContainer etcd;
     private KeyStoreWrapper apiServerKeyPair;
+    private KubeControllerManager controllerManager = new KubeControllerManager();
 
     /**
      * Constructs a new <code>ApiServerContainer</code> with the latest supported Kubernetes version.
@@ -163,12 +165,25 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
             etcd.start();
             writeCertificates();
             super.start();
+            if (controllerManager != null) {
+                controllerManager.start(client());
+            }
         } catch (final RuntimeException e) {
             etcd.close();
             throw e;
         } catch (final IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    /**
+     * Disables the (active by default) fake controller manager.
+     *
+     * @return this
+     */
+    public T withoutControllerManager() {
+        controllerManager = null;
+        return self();
     }
 
     private KeyStoreWrapper writeCertificates() throws IOException {
@@ -244,8 +259,15 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     @Override
     public void stop() {
-        super.stop();
-        etcd.stop();
+        try {
+            if (controllerManager != null) {
+                controllerManager.close();
+            }
+        } finally {
+            LOG.info("Stopping {}", ApiServerContainer.class.getSimpleName());
+            super.stop();
+            etcd.stop();
+        }
     }
 
     /**
