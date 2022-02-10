@@ -100,6 +100,10 @@ public final class Utils {
                 .build();
     }
 
+    static String prefixLines(final String strings, final String prefix) {
+        return strings.replaceAll("(?m)^", prefix);
+    }
+
     public interface ThrowingRunnable<E extends Exception> {
         void run() throws E;
     }

@@ -3,6 +3,9 @@ package com.dajudge.kindcontainer;
 import org.junit.ClassRule;
 import org.junit.Test;
 
+import static com.dajudge.kindcontainer.TestUtils.runWithClient;
+import static org.junit.Assert.assertFalse;
+
 public class Helm3Test {
 
     @ClassRule
@@ -18,5 +21,8 @@ public class Helm3Test {
 
     @Test
     public void can_install_something() {
+        runWithClient(K8S, client -> {
+            assertFalse(client.apps().deployments().inNamespace("kubernetes-replicator").list().getItems().isEmpty());
+        });
     }
 }

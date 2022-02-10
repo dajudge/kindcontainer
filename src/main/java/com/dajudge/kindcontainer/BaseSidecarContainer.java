@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.util.Arrays;
 
+import static com.dajudge.kindcontainer.Utils.prefixLines;
 import static java.lang.String.join;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -53,6 +54,8 @@ public class BaseSidecarContainer<T extends BaseSidecarContainer<T>> extends Gen
     protected void safeExecInContainer(final String... cmd) throws IOException, InterruptedException, ExecutionException {
         LOG.info("Executing command: {}", join(" ", Arrays.asList(cmd)));
         final ExecResult result = execInContainer(cmd);
+        LOG.trace("{}", prefixLines(result.getStdout(), "STDOUT: "));
+        LOG.trace("{}", prefixLines(result.getStderr(), "STDERR: "));
         if (result.getExitCode() != 0) {
             throw new ExecutionException(cmd, result);
         }
