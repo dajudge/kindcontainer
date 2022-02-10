@@ -230,7 +230,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
             ));
         } catch (final RuntimeException | IOException | InterruptedException e) {
             try {
-                LOG.error("{}", prefixLines(execInContainer("journalctl").getStdout(), "JOURNAL: "));
+                LOG.error("{}", Utils.prefixLines(execInContainer("journalctl").getStdout(), "JOURNAL: "));
             } catch (final IOException | InterruptedException ex) {
                 LOG.error("Could not retrieve journal.", ex);
             }
@@ -271,12 +271,12 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         final int exitCode = execResult.getExitCode();
         if (exitCode == 0) {
             LOG.debug("\"{}\" exited with status code {}", cmdString, exitCode);
-            LOG.debug("{}", prefixLines(execResult.getStdout(), "STDOUT: "));
-            LOG.debug("{}", prefixLines(execResult.getStderr(), "STDERR: "));
+            LOG.debug("{}", Utils.prefixLines(execResult.getStdout(), "STDOUT: "));
+            LOG.debug("{}", Utils.prefixLines(execResult.getStderr(), "STDERR: "));
         } else {
             LOG.error("\"{}\" exited with status code {}", cmdString, exitCode);
-            LOG.error("{}", prefixLines(execResult.getStdout(), "STDOUT: "));
-            LOG.error("{}", prefixLines(execResult.getStderr(), "STDERR: "));
+            LOG.error("{}", Utils.prefixLines(execResult.getStdout(), "STDOUT: "));
+            LOG.error("{}", Utils.prefixLines(execResult.getStderr(), "STDERR: "));
             throw new IllegalStateException(cmdString + " exited with status code " + execResult);
         }
     }
@@ -439,9 +439,5 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         public String toString() {
             return format("%d.%d.%d", descriptor.getMajor(), descriptor.getMinor(), descriptor.getPatch());
         }
-    }
-
-    private static String prefixLines(String stdout, String prefix) {
-        return stdout.replaceAll("(?m)^", prefix);
     }
 }
