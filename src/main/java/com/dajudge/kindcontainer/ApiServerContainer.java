@@ -1,19 +1,15 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.client.KubeConfigUtils;
+import com.dajudge.kindcontainer.client.TinyK8sClient;
+import com.dajudge.kindcontainer.client.config.*;
 import com.dajudge.kindcontainer.pki.CertAuthority;
 import com.dajudge.kindcontainer.pki.KeyStoreWrapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.InspectContainerResponse;
-import io.fabric8.kubernetes.api.model.*;
-import io.fabric8.kubernetes.client.Config;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import io.fabric8.kubernetes.client.utils.Serialization;
-import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Network;
-import org.testcontainers.containers.wait.internal.ExternalPortListeningCheck;
 import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.shaded.com.google.common.io.Files;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
@@ -57,7 +53,6 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     private static final File tempDir = Files.createTempDir();
     private final CertAuthority apiServerCa = new CertAuthority(System::currentTimeMillis, "CN=API Server CA");
     private final EtcdContainer etcd;
-    private final Config config = Config.empty();
     private KeyStoreWrapper apiServerKeyPair;
 
     /**
@@ -88,8 +83,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .withEnv("IP_ADDRESS_PATH", IP_ADDRESS_PATH)
                 .withEnv("ETCD_HOSTNAME_PATH", ETCD_HOSTNAME_PATH)
                 .withNetwork(network)
-                .withNetworkAliases(INTERNAL_HOSTNAME)
-                .withPostStartupExecution(() -> configureClient(apiServerKeyPair));
+                .withNetworkAliases(INTERNAL_HOSTNAME);
     }
 
     private static DockerImageName getDockerImage(final Version version) {
@@ -154,15 +148,13 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     private void waitForApiServer() {
         LOG.info("Waiting for API server...");
-        final HashSet<Integer> externalPort = new HashSet<>(singletonList(getMappedPort(getInternalPort())));
-        final ExternalPortListeningCheck externalCheck = new ExternalPortListeningCheck(this, externalPort);
         Awaitility.await()
                 .pollInSameThread()
-                .pollInterval(ofMillis(50))
+                .pollInterval(ofMillis(100))
                 .pollDelay(ZERO)
                 .ignoreExceptions()
                 .forever()
-                .until(externalCheck);
+                .until(() -> null != TinyK8sClient.fromKubeconfig(getExternalKubeconfig()).v1().nodes().list());
     }
 
     @Override
@@ -179,7 +171,6 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
         }
     }
 
-    @NotNull
     private KeyStoreWrapper writeCertificates() throws IOException {
         apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
                 new GeneralName(GeneralName.iPAddress, Utils.resolve(getHost())),
@@ -212,13 +203,28 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
         return file.toPath();
     }
 
-    private void configureClient(final KeyStoreWrapper apiServerKeyPair) {
-        config.setCaCertData(base64(apiServerCa.getCaKeyStore().getCertificatePem()));
-        config.setClientCertData(base64(apiServerKeyPair.getCertificatePem()));
-        config.setClientKeyData(base64(apiServerKeyPair.getPrivateKeyPem()));
-        config.setMasterUrl(format("https://%s:%d", getContainerIpAddress(), getMappedPort(INTERNAL_API_SERVER_PORT)));
-        config.setConnectionTimeout(10000);
-        config.setRequestTimeout(60000);
+    private String getKubeconfig(final String url) {
+        final Cluster cluster = new Cluster();
+        cluster.setName("apiserver");
+        cluster.setCluster(new ClusterSpec());
+        cluster.getCluster().setServer(url);
+        cluster.getCluster().setCertificateAuthorityData((base64(apiServerCa.getCaKeyStore().getCertificatePem())));
+        final User user = new User();
+        user.setName("apiserver");
+        user.setUser(new UserSpec());
+        user.getUser().setClientKeyData(base64(apiServerKeyPair.getPrivateKeyPem()));
+        user.getUser().setClientCertificateData(base64(apiServerKeyPair.getCertificatePem()));
+        final Context context = new Context();
+        context.setName("apiserver");
+        context.setContext(new ContextSpec());
+        context.getContext().setCluster(cluster.getName());
+        context.getContext().setUser(user.getName());
+        final KubeConfig config = new KubeConfig();
+        config.setUsers(singletonList(user));
+        config.setClusters(singletonList(cluster));
+        config.setContexts(singletonList(context));
+        config.setCurrentContext(context.getName());
+        return KubeConfigUtils.serializeKubeConfig(config);
     }
 
 
@@ -234,37 +240,6 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     @Override
     public String getExternalKubeconfig() {
         return getKubeconfig(format("https://%s:%d", getHost(), getMappedPort(INTERNAL_API_SERVER_PORT)));
-    }
-
-    private String getKubeconfig(String url) {
-        try {
-            return Serialization.yamlMapper().writeValueAsString(new ConfigBuilder()
-                    .withClusters(new NamedClusterBuilder()
-                            .withName("kindcontainer")
-                            .withCluster(new ClusterBuilder()
-                                    .withServer(url)
-                                    .withCertificateAuthorityData(config.getCaCertData())
-                                    .build())
-                            .build())
-                    .withCurrentContext("kindcontainer")
-                    .withContexts(new NamedContextBuilder()
-                            .withName("kindcontainer")
-                            .withNewContext()
-                            .withCluster("kindcontainer")
-                            .withUser("kindcontainer")
-                            .endContext()
-                            .build())
-                    .withUsers(new NamedAuthInfoBuilder()
-                            .withName("kindcontainer")
-                            .withUser(new AuthInfoBuilder()
-                                    .withClientCertificateData(config.getClientCertData())
-                                    .withClientKeyData(config.getClientKeyData())
-                                    .build())
-                            .build())
-                    .build());
-        } catch (final JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize kubeconfig");
-        }
     }
 
     @Override

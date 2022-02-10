@@ -1,21 +1,28 @@
 package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
-import com.dajudge.kindcontainer.Utils.ThrowingFunction;
 import com.dajudge.kindcontainer.Utils.ThrowingRunnable;
+import com.dajudge.kindcontainer.client.TinyK8sClient;
+import com.dajudge.kindcontainer.client.config.KubeConfig;
+import com.dajudge.kindcontainer.client.config.UserSpec;
+import com.dajudge.kindcontainer.client.model.v1.ObjectReference;
+import com.dajudge.kindcontainer.client.model.v1.Secret;
+import com.dajudge.kindcontainer.client.model.v1.ServiceAccount;
 import com.dajudge.kindcontainer.helm.Helm3Container;
 import com.dajudge.kindcontainer.kubectl.KubectlContainer;
 import com.github.dockerjava.api.command.InspectContainerResponse;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
+import java.time.Duration;
+import java.util.*;
 
+import static com.dajudge.kindcontainer.client.KubeConfigUtils.parseKubeConfig;
+import static com.dajudge.kindcontainer.client.KubeConfigUtils.serializeKubeConfig;
 import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL_IMAGE;
-import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
+import static java.lang.String.format;
+import static java.nio.charset.StandardCharsets.UTF_8;
+import static java.time.temporal.ChronoUnit.SECONDS;
 import static java.util.Arrays.asList;
 
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
@@ -25,33 +32,9 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
 
     public KubernetesContainer(final DockerImageName dockerImageName) {
         super(dockerImageName);
-        this.withExposedPorts(getInternalPort()).waitingFor(new WaitForPortsExternallyStrategy());
-    }
-
-    public void runWithClient(final ThrowingConsumer<DefaultKubernetesClient, Exception> consumer) {
-        runWithClient(client -> {
-            consumer.accept(client);
-            return null;
-        });
-    }
-
-    public <R> R runWithClient(final ThrowingFunction<DefaultKubernetesClient, R, Exception> function) {
-        try (final DefaultKubernetesClient client = newClient()) {
-            try {
-                return function.apply(client);
-            } catch (final Exception e) {
-                throw new RuntimeException("Error running with client", e);
-            }
-        }
-    }
-
-    /**
-     * Returns a fabric8 Kubernetes client with administrative access.
-     *
-     * @return a <code>DefaultKubernetesClient</code> with cluster-admin permissions
-     */
-    public DefaultKubernetesClient newClient() {
-        return new DefaultKubernetesClient(fromKubeconfig(getExternalKubeconfig()));
+        this.withExposedPorts(getInternalPort())
+                .waitingFor(new WaitForPortsExternallyStrategy())
+                .withStartupTimeout(Duration.of(300, SECONDS));
     }
 
     /**
@@ -150,4 +133,42 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         runPostAvailabilityExecutions();
         super.containerIsStarting(containerInfo);
     }
+
+    protected TinyK8sClient client() {
+        return TinyK8sClient.fromKubeconfig(getExternalKubeconfig());
+    }
+
+    public String getServiceAccountKubeconfig(
+            final String serviceAccountNamespace,
+            final String serviceAccountName
+    ) {
+        final KubeConfig kubeconfig = parseKubeConfig(getExternalKubeconfig());
+        final UserSpec userSpec = new UserSpec();
+        userSpec.setToken(getServiceAccountToken(serviceAccountNamespace, serviceAccountName, client()));
+        kubeconfig.getUsers().get(0).setUser(userSpec);
+        return serializeKubeConfig(kubeconfig);
+    }
+
+    private String getServiceAccountToken(
+            final String serviceAccountNamespace,
+            final String serviceAccountName,
+            final TinyK8sClient client
+    ) {
+        final String saName = serviceAccountNamespace + "/" + serviceAccountName;
+        final ServiceAccount sa = client.v1().serviceAccounts().inNamespace(serviceAccountNamespace).find(serviceAccountName)
+                .orElseThrow(() -> new RuntimeException(format("ServiceAccount %s not found", saName)));
+        if (sa.getSecrets() == null || sa.getSecrets().isEmpty()) {
+            throw new RuntimeException(format("ServiceAccount %s has no secrets", saName));
+        }
+        final ObjectReference secretRef = sa.getSecrets().get(0);
+        final String secretNamespace = Optional.ofNullable(secretRef.getNamespace()).orElse(serviceAccountNamespace);
+        final String secretName = secretRef.getName();
+        final Secret secret = client.v1().secrets().inNamespace(secretNamespace).find(secretName)
+                .orElseThrow(() -> new RuntimeException(format("Secret %s/%s not found", secretNamespace, secretName)));
+        if (!"kubernetes.io/service-account-token".equals(secret.getType())) {
+            throw new RuntimeException(format("Secret %s/%s is not of type kubernetes.io/service-account-token", secretNamespace, secretName));
+        }
+        return new String(Base64.getDecoder().decode(secret.getData().get("token")), UTF_8);
+    }
+
 }

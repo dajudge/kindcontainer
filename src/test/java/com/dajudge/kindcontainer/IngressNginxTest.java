@@ -4,7 +4,8 @@ import io.fabric8.kubernetes.api.model.apps.Deployment;
 import org.junit.ClassRule;
 import org.junit.Test;
 
-import static com.dajudge.kindcontainer.DeploymentWaitStrategy.deploymentIsReady;
+import static com.dajudge.kindcontainer.DeploymentAvailableWaitStrategy.deploymentIsAvailable;
+import static com.dajudge.kindcontainer.TestUtils.runWithClient;
 import static io.fabric8.kubernetes.client.internal.readiness.Readiness.isDeploymentReady;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -23,11 +24,11 @@ public class IngressNginxTest {
                         .set("controller.service.nodePorts.http", "30080")
                         .run("ingress-nginx", "ingress-nginx/ingress-nginx");
             })
-            .waitingFor(deploymentIsReady("ingress-nginx", "ingress-nginx-controller"));
+            .waitingFor(deploymentIsAvailable("ingress-nginx", "ingress-nginx-controller"));
 
     @Test
-    public void ingress_deployment_becomes_ready() {
-        KIND.runWithClient(client -> {
+    public void ingress_deployment_becomes_ready() throws Exception {
+        runWithClient(KIND, client -> {
             final Deployment deployment = client.apps().deployments()
                     .inNamespace("ingress-nginx")
                     .withName("ingress-nginx-controller")

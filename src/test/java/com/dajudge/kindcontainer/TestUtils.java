@@ -1,6 +1,9 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
+import com.dajudge.kindcontainer.Utils.ThrowingFunction;
 import io.fabric8.kubernetes.api.model.*;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import org.jetbrains.annotations.NotNull;
 import org.testcontainers.shaded.okhttp3.OkHttpClient;
@@ -15,6 +18,7 @@ import java.util.HashMap;
 import java.util.Random;
 import java.util.concurrent.Callable;
 
+import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.UUID.randomUUID;
 
@@ -103,5 +107,28 @@ final class TestUtils {
             bos.write(buffer, 0, read);
         }
         return new String(bos.toByteArray(), UTF_8);
+    }
+
+    public static <O> O runWithClient(
+            final KubernetesContainer<?> k8s,
+            final ThrowingConsumer<DefaultKubernetesClient, Exception> consumer
+    ) {
+        return runWithClient(k8s, client -> {
+            consumer.accept(client);
+            return null;
+        });
+    }
+
+    public static <O> O runWithClient(
+            final KubernetesContainer<?> k8s,
+            final ThrowingFunction<DefaultKubernetesClient, O, Exception> consumer
+    ) {
+        try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(k8s.getExternalKubeconfig()))) {
+            try {
+                return consumer.apply(client);
+            } catch (final Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }

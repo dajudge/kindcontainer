@@ -60,7 +60,8 @@ public class BaseSidecarContainer<T extends BaseSidecarContainer<T>> extends Gen
 
     private synchronized void writeKubeConfig() {
         if (!kubeConfigWritten) {
-            copyFileToContainer(Transferable.of(kubeConfigSupplier.kubeconfig().getBytes(UTF_8)), KUBECONFIG_PATH);
+            final String kubeconfig = kubeConfigSupplier.kubeconfig();
+            copyFileToContainer(Transferable.of(kubeconfig.getBytes(UTF_8)), KUBECONFIG_PATH);
         }
         kubeConfigWritten = true;
     }
