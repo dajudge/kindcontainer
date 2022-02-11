@@ -20,7 +20,7 @@ import static org.junit.Assert.*;
 public class TinyK8sClientTest {
     private static final ApiServerContainer<?> K8S = StaticContainers.apiServer();
 
-    private final TinyK8sClient client = TinyK8sClient.fromKubeconfig(K8S.getExternalKubeconfig());
+    private final TinyK8sClient client = TinyK8sClient.fromKubeconfig(K8S.getKubeconfig());
 
     @Test
     public void can_list_namespaces() {

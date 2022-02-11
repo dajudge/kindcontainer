@@ -154,7 +154,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .pollDelay(ZERO)
                 .ignoreExceptions()
                 .forever()
-                .until(() -> null != TinyK8sClient.fromKubeconfig(getExternalKubeconfig()).v1().nodes().list());
+                .until(() -> null != TinyK8sClient.fromKubeconfig(getKubeconfig()).v1().nodes().list());
     }
 
     @Override
@@ -238,7 +238,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     }
 
     @Override
-    public String getExternalKubeconfig() {
+    public String getKubeconfig() {
         return getKubeconfig(format("https://%s:%d", getHost(), getMappedPort(INTERNAL_API_SERVER_PORT)));
     }
 

@@ -19,7 +19,7 @@ public class ServiceAccountTest {
     @Test
     public void creates_client_for_service_account() {
         // First do a sanity check w/ admin privileges
-        final String kubeconfig1 = k8s.getExternalKubeconfig();
+        final String kubeconfig1 = k8s.getKubeconfig();
         try(final DefaultKubernetesClient client = new DefaultKubernetesClient(Config.fromKubeconfig(kubeconfig1))) {
             client.pods().inNamespace("my-namespace").list();
             client.inNamespace("my-namespace").secrets().list();

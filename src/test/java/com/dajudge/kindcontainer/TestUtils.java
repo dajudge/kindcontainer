@@ -123,7 +123,7 @@ final class TestUtils {
             final KubernetesContainer<?> k8s,
             final ThrowingFunction<DefaultKubernetesClient, O, Exception> consumer
     ) {
-        try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(k8s.getExternalKubeconfig()))) {
+        try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(k8s.getKubeconfig()))) {
             try {
                 return consumer.apply(client);
             } catch (final Exception e) {
