@@ -37,7 +37,7 @@ public class DeploymentAvailableWaitStrategy extends AbstractWaitStrategy {
 
         LOG.info("Waiting for Deployment to be ready: {}/{}", namespace, name);
         final KubernetesContainer<?> k8s = (KubernetesContainer<?>) waitStrategyTarget;
-        final TinyK8sClient client = TinyK8sClient.fromKubeconfig(k8s.getExternalKubeconfig());
+        final TinyK8sClient client = TinyK8sClient.fromKubeconfig(k8s.getKubeconfig());
         Awaitility.await(format("Deployment %s/%s", namespace, name))
                 .pollInSameThread()
                 .pollDelay(0, SECONDS)

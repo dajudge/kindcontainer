@@ -297,7 +297,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     @Override
-    public String getExternalKubeconfig() {
+    public String getKubeconfig() {
         return getKubeconfig(format("https://%s:%s", getHost(), getMappedPort(INTERNAL_API_SERVER_PORT)));
     }
 

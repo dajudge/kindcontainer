@@ -93,11 +93,11 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     /**
-     * Returns a kubeconfig that can be used for access from the outside.
+     * Returns a kubeconfig that can be used for access from the outside (e.g. the JVM of JUnit tests).
      *
      * @return the kubeconfig
      */
-    public abstract String getExternalKubeconfig();
+    public abstract String getKubeconfig();
 
     @Override
     public void stop() {
@@ -135,14 +135,14 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     protected TinyK8sClient client() {
-        return TinyK8sClient.fromKubeconfig(getExternalKubeconfig());
+        return TinyK8sClient.fromKubeconfig(getKubeconfig());
     }
 
     public String getServiceAccountKubeconfig(
             final String serviceAccountNamespace,
             final String serviceAccountName
     ) {
-        final KubeConfig kubeconfig = parseKubeConfig(getExternalKubeconfig());
+        final KubeConfig kubeconfig = parseKubeConfig(getKubeconfig());
         final UserSpec userSpec = new UserSpec();
         userSpec.setToken(getServiceAccountToken(serviceAccountNamespace, serviceAccountName, client()));
         kubeconfig.getUsers().get(0).setUser(userSpec);
