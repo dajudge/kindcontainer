@@ -7,14 +7,13 @@ import org.junit.ClassRule;
 import org.junit.Test;
 
 import static org.junit.Assert.fail;
-import static org.testcontainers.utility.MountableFile.forClasspathResource;
 
 public class ServiceAccountTest {
     @ClassRule
     public static final KindContainer<?> k8s = new KindContainer<>(KindContainer.Version.VERSION_1_21_2)
             .withKubectl(kubectl -> kubectl.apply
-                    .withFile(forClasspathResource("manifests/serviceaccount1.yaml"), "/tmp/manifest.yaml")
-                    .run("/tmp/manifest.yaml"));
+                    .fileFromClasspath("manifests/serviceaccount1.yaml")
+                    .run());
 
     @Test
     public void creates_client_for_service_account() {

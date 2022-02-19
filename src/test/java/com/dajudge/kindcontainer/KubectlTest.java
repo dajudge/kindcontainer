@@ -12,8 +12,8 @@ public class KubectlTest {
     @ClassRule
     public static ApiServerContainer<?> K8S = new ApiServerContainer<>()
             .withKubectl(kubectl -> kubectl.apply
-                    .withFile(forClasspathResource("manifests/configmap1.yaml"), "/tmp/configmap1.yaml")
-                    .run("/tmp/configmap1.yaml"));
+                    .fileFromClasspath("manifests/config_map_1.yaml")
+                    .run());
 
     @Test
     public void can_apply_manifest() throws Exception {
