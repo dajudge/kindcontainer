@@ -7,18 +7,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class DeleteFluent {
+public class DeleteFluent<P> {
     private final ExecInContainer exec;
+    private final P parent;
     private String namespace;
     private boolean ignoreNotFound;
     private boolean force;
     private Integer gracePeriod;
 
-    DeleteFluent(final ExecInContainer exec) {
+    DeleteFluent(final ExecInContainer exec, final P parent) {
         this.exec = exec;
+        this.parent = parent;
     }
 
-    public void run(final String kind, final String name) throws IOException, ExecutionException, InterruptedException {
+    public P run(final String kind, final String name) throws IOException, ExecutionException, InterruptedException {
         final List<String> cmdline = new ArrayList<>();
         cmdline.add("kubectl");
         cmdline.add("delete");
@@ -38,24 +40,25 @@ public class DeleteFluent {
         cmdline.add(kind);
         cmdline.add(name);
         exec.safeExecInContainer(cmdline.toArray(new String[]{}));
+        return parent;
     }
 
-    public DeleteFluent namespace(final String namespace) {
+    public DeleteFluent<P> namespace(final String namespace) {
         this.namespace = namespace;
         return this;
     }
 
-    public DeleteFluent ignoreNotFound() {
+    public DeleteFluent<P> ignoreNotFound() {
         ignoreNotFound = true;
         return this;
     }
 
-    public DeleteFluent force() {
+    public DeleteFluent<P> force() {
         force = true;
         return this;
     }
 
-    public DeleteFluent gracePeriod(int value) {
+    public DeleteFluent<P> gracePeriod(int value) {
         gracePeriod = value;
         return this;
     }
