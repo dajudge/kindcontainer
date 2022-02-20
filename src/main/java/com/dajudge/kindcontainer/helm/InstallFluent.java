@@ -11,38 +11,40 @@ import java.util.Map;
 
 import static java.util.Arrays.asList;
 
-public class InstallFluent {
+public class InstallFluent<P> {
 
     private final ExecInContainer c;
+    private final P parent;
     private String namespace;
     private boolean createNamespace;
     private Map<String, String> params = new HashMap<>();
 
-    public InstallFluent(final ExecInContainer c) {
+    public InstallFluent(final ExecInContainer c, final P parent) {
         this.c = c;
+        this.parent = parent;
     }
 
-    public InstallFluent set(final String key, final String value) {
+    public InstallFluent<P> set(final String key, final String value) {
         params.put(key, value);
         return this;
     }
 
-    public InstallFluent namespace(final String namespace) {
+    public InstallFluent<P> namespace(final String namespace) {
         this.namespace = namespace;
         return this;
     }
 
-    public InstallFluent createNamespace(final boolean createNamespace) {
+    public InstallFluent<P> createNamespace(final boolean createNamespace) {
         this.createNamespace = createNamespace;
         return this;
     }
 
 
-    public InstallFluent createNamespace() {
+    public InstallFluent<P> createNamespace() {
         return createNamespace(true);
     }
 
-    public void run(final String releaseName, final String chart) throws IOException, InterruptedException, ExecutionException {
+    public P run(final String releaseName, final String chart) throws IOException, InterruptedException, ExecutionException {
         try {
             final List<String> cmdline = new ArrayList<>(asList("helm", "install"));
             if (namespace != null) {
@@ -56,6 +58,7 @@ public class InstallFluent {
             });
             cmdline.addAll(asList(releaseName, chart));
             c.safeExecInContainer(cmdline.toArray(new String[]{}));
+            return parent;
         } finally {
             createNamespace = false;
             namespace = null;

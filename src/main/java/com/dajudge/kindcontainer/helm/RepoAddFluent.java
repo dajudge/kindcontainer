@@ -4,6 +4,6 @@ import com.dajudge.kindcontainer.exception.ExecutionException;
 
 import java.io.IOException;
 
-public interface RepoAddFluent {
-    void run(final String name, final String repo) throws IOException, InterruptedException, ExecutionException;
+public interface RepoAddFluent<P> {
+    P run(final String name, final String repo) throws IOException, InterruptedException, ExecutionException;
 }
