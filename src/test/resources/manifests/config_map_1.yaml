@@ -8,3 +8,5 @@ kind: ConfigMap
 metadata:
   name: configmap1
   namespace: configmap1
+data:
+  my-key: {{ my-value }}
