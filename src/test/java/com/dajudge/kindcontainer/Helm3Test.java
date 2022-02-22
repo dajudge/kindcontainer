@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.function.Supplier;
 
-import static com.dajudge.kindcontainer.TestUtils.runWithClient;
+import static com.dajudge.kindcontainer.util.TestUtils.runWithClient;
 import static org.junit.Assert.assertFalse;
 
 @RunWith(Parameterized.class)

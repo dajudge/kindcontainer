@@ -1,10 +1,11 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.util.TestUtils;
 import org.junit.Rule;
 import org.junit.Test;
 import org.testcontainers.utility.MountableFile;
 
-import static com.dajudge.kindcontainer.TestUtils.stringResource;
+import static com.dajudge.kindcontainer.util.TestUtils.stringResource;
 import static org.junit.Assert.assertTrue;
 
 public class CertificatesTest {

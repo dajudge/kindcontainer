@@ -1,10 +1,14 @@
 package com.dajudge.kindcontainer;
 
-import com.dajudge.kindcontainer.client.*;
+import com.dajudge.kindcontainer.client.TinyK8sClient;
+import com.dajudge.kindcontainer.client.Watch;
+import com.dajudge.kindcontainer.client.WatchCallback;
+import com.dajudge.kindcontainer.client.Watchable;
 import com.dajudge.kindcontainer.client.model.base.Metadata;
 import com.dajudge.kindcontainer.client.model.base.ResourceAction;
 import com.dajudge.kindcontainer.client.model.v1.Namespace;
 import com.dajudge.kindcontainer.client.model.v1.ServiceAccount;
+import org.junit.ClassRule;
 import org.junit.Test;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
@@ -18,7 +22,8 @@ import static java.util.stream.Collectors.toMap;
 import static org.junit.Assert.*;
 
 public class TinyK8sClientTest {
-    private static final ApiServerContainer<?> K8S = StaticContainers.apiServer();
+    @ClassRule
+    public static final ApiServerContainer<?> K8S = new ApiServerContainer<>();
 
     private final TinyK8sClient client = TinyK8sClient.fromKubeconfig(K8S.getKubeconfig());
 
