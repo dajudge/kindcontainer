@@ -382,7 +382,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         private static final Comparator<Version> COMPARE_ASCENDING = comparing(a -> a.descriptor);
         private static final Comparator<Version> COMPARE_DESCENDING = COMPARE_ASCENDING.reversed();
         @VisibleForTesting
-        final KubernetesVersionDescriptor descriptor;
+        private final KubernetesVersionDescriptor descriptor;
 
         Version(final KubernetesVersionDescriptor descriptor) {
             this.descriptor = descriptor;
@@ -408,6 +408,9 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                     .collect(toList());
         }
 
+        public KubernetesVersionDescriptor getDescriptor() {
+            return descriptor;
+        }
 
         @Override
         public String toString() {

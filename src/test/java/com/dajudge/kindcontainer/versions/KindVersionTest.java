@@ -1,5 +1,6 @@
-package com.dajudge.kindcontainer;
+package com.dajudge.kindcontainer.versions;
 
+import com.dajudge.kindcontainer.KindContainer;
 import org.junit.runners.Parameterized;
 
 import java.util.Collection;
@@ -11,7 +12,7 @@ public class KindVersionTest extends AbstractVersionedTest {
     }
 
     public KindVersionTest(final KindContainer.Version version) {
-        super(() -> createKindContainer(version), version.descriptor);
+        super(() -> createKindContainer(version), version.getDescriptor());
     }
 
     private static KindContainer<?> createKindContainer(final KindContainer.Version version) {

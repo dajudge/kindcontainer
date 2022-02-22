@@ -1,5 +1,6 @@
-package com.dajudge.kindcontainer;
+package com.dajudge.kindcontainer.versions;
 
+import com.dajudge.kindcontainer.ApiServerContainer;
 import org.junit.runners.Parameterized;
 
 import java.util.Collection;
@@ -11,7 +12,7 @@ public class ApiServerVersionTest extends AbstractVersionedTest {
     }
 
     public ApiServerVersionTest(final ApiServerContainer.Version version) {
-        super(() -> createApiServerContainer(version), version.descriptor);
+        super(() -> createApiServerContainer(version), version.getDescriptor());
     }
 
     private static ApiServerContainer<?> createApiServerContainer(final ApiServerContainer.Version version) {

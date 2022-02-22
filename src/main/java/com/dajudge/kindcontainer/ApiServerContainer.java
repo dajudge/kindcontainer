@@ -270,6 +270,9 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                     .collect(toList());
         }
 
+        public KubernetesVersionDescriptor getDescriptor() {
+            return descriptor;
+        }
 
         @Override
         public String toString() {

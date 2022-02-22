@@ -6,7 +6,7 @@ import org.testcontainers.utility.DockerImageName;
 import static java.lang.String.format;
 
 @VisibleForTesting
-class KubernetesVersionDescriptor implements Comparable<KubernetesVersionDescriptor> {
+public class KubernetesVersionDescriptor implements Comparable<KubernetesVersionDescriptor> {
     private final int major, minor, patch;
 
     KubernetesVersionDescriptor(final int major, final int minor, final int patch) {
@@ -27,7 +27,7 @@ class KubernetesVersionDescriptor implements Comparable<KubernetesVersionDescrip
     }
 
     @VisibleForTesting
-    String getKubernetesVersion() {
+    public String getKubernetesVersion() {
         return format("v%d.%d.%d", major, minor, patch);
     }
 

@@ -1,5 +1,6 @@
-package com.dajudge.kindcontainer;
+package com.dajudge.kindcontainer.util;
 
+import com.dajudge.kindcontainer.KubernetesContainer;
 import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
 import com.dajudge.kindcontainer.Utils.ThrowingFunction;
 import io.fabric8.kubernetes.api.model.*;
@@ -22,13 +23,13 @@ import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.UUID.randomUUID;
 
-final class TestUtils {
+public final class TestUtils {
     private static final Random RANDOM = new Random();
 
     private TestUtils() {
     }
 
-    static String createNewNamespace(final KubernetesClient client) {
+    public static String createNewNamespace(final KubernetesClient client) {
         final Namespace namespace = new NamespaceBuilder()
                 .withNewMetadata()
                 .withName(randomIdentifier())
@@ -38,14 +39,13 @@ final class TestUtils {
         return namespace.getMetadata().getName();
     }
 
-    @NotNull
-    static String randomIdentifier() {
+    public static String randomIdentifier() {
         final String alphabet = "abcdefghijklmnopqrstuvwxyz";
         return alphabet.charAt(RANDOM.nextInt(alphabet.length()))
                 + randomUUID().toString().replaceAll("-", "");
     }
 
-    static Pod createSimplePod(final KubernetesClient client, final String namespace) {
+    public static Pod createSimplePod(final KubernetesClient client, final String namespace) {
         final Pod pod = new PodBuilder()
                 .withNewMetadata()
                 .withName(randomIdentifier())
@@ -69,7 +69,7 @@ final class TestUtils {
         return pod;
     }
 
-    static Callable<Boolean> http(final String url) {
+    public static Callable<Boolean> http(final String url) {
         return () -> {
             try {
                 final OkHttpClient client = new OkHttpClient();
@@ -84,7 +84,7 @@ final class TestUtils {
         };
     }
 
-    static boolean isRunning(final KubernetesClient client, final HasMetadata pod) {
+    public static boolean isRunning(final KubernetesClient client, final HasMetadata pod) {
         return "Running".equals(client.pods()
                 .inNamespace(pod.getMetadata().getNamespace())
                 .withName(pod.getMetadata().getName())

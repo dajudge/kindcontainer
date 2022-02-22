@@ -5,21 +5,28 @@ import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import org.junit.ClassRule;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.function.Supplier;
 
 import static org.junit.Assert.fail;
 
-public class ServiceAccountTest {
-    @ClassRule
-    public static final KindContainer<?> k8s = new KindContainer<>(KindContainer.Version.VERSION_1_21_2)
-            .withKubectl(kubectl -> kubectl.apply
-                    .fileFromClasspath("manifests/serviceaccount1.yaml")
-                    .run());
+public class ServiceAccountTest extends BaseFullContainersTest {
+
+    public ServiceAccountTest(final KubernetesContainer<?> k8s) {
+        super(k8s.withKubectl(kubectl -> kubectl.apply
+                .fileFromClasspath("manifests/serviceaccount1.yaml")
+                .run()));
+        }
 
     @Test
     public void creates_client_for_service_account() {
         // First do a sanity check w/ admin privileges
         final String kubeconfig1 = k8s.getKubeconfig();
-        try(final DefaultKubernetesClient client = new DefaultKubernetesClient(Config.fromKubeconfig(kubeconfig1))) {
+        try (final DefaultKubernetesClient client = new DefaultKubernetesClient(Config.fromKubeconfig(kubeconfig1))) {
             client.pods().inNamespace("my-namespace").list();
             client.inNamespace("my-namespace").secrets().list();
         }
