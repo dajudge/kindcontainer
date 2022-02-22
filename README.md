@@ -63,7 +63,7 @@ objects in the control plane.
 ```java
 public class SomeControlPlaneTest {
     @ClassRule
-    public static final ApiServerContainer KUBE = new ApiServerContainer();
+    public static final ApiServerContainer<?> KUBE = new ApiServerContainer<>();
 
     @Test
     public void verify_no_node_is_present() {
