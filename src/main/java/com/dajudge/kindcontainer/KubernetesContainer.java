@@ -129,9 +129,9 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     @Override
-    protected void containerIsStarting(final InspectContainerResponse containerInfo) {
-        runPostAvailabilityExecutions();
+    protected void containerIsStarted(final InspectContainerResponse containerInfo) {
         super.containerIsStarting(containerInfo);
+        runPostAvailabilityExecutions();
     }
 
     protected TinyK8sClient client() {
