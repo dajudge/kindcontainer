@@ -18,7 +18,7 @@ Add the kindcontainer dependency:
         <dependency>
             <groupId>com.dajudge.kindcontainer</groupId>
             <artifactId>kindcontainer</artifactId>
-            <version>0.0.17</version>
+            <version>1.0.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -29,29 +29,29 @@ Add the kindcontainer dependency:
 Add the kindcontainer dependency:
 ```groovy
 repositories {
-    // Since 0.0.13 kindcontainer is on maven central
     mavenCentral()
 }
 
 dependencies {
-    testImplementation "com.dajudge.kindcontainer:kindcontainer:0.0.17"
+    testImplementation "com.dajudge.kindcontainer:kindcontainer:1.0.0"
 }
 ```
 ### Use in JUnit test
 ```java
 public class SomeKubernetesTest {
     @ClassRule
-    public static final KindContainer KUBE = new KindContainer();
+    public static final KindContainer<?> KUBE = new KindContainer<>();
 
     @Test
     public void verify_node_is_present() {
         // Do something useful with the fabric8 client it returns!
-        try(final KuberntesClient client = KUBE.client()) {
+        try(final KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(KUBE.getKubeconfig()))) {
             assertEquals(1, client.nodes().list().getItems().size());
         }
     }
 }
 ```
+Look [here](src/test/java/com/dajudge/kindcontainer/readme/SomeKubernetesTest.java) for the reference test.
 
 ### API-Server-only testing
 If you don't need a full-fledged Kubernetes distribution for your testing, using the `ApiServerContainer`
@@ -68,9 +68,10 @@ public class SomeControlPlaneTest {
     @Test
     public void verify_no_node_is_present() {
         // Do something useful with the fabric8 client it returns!
-        try(final KuberntesClient client = KUBE.client()) {
+        try (final KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(KUBE.getKubeconfig()))) {
             assertTrue(client.nodes().list().getItems().isEmpty());
         }
     }
 }
 ```
+Look [here](src/test/java/com/dajudge/kindcontainer/readme/SomeControlPlaneTest.java) for the reference test.
