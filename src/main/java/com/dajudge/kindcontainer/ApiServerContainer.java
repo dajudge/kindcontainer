@@ -245,7 +245,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     public enum Version {
         VERSION_1_21_2(new KubernetesVersionDescriptor(1, 21, 2)),
         VERSION_1_22_4(new KubernetesVersionDescriptor(1, 22, 4)),
-        VERSION_1_23_4(new KubernetesVersionDescriptor(1, 23, 3));
+        VERSION_1_23_4(new KubernetesVersionDescriptor(1, 23, 4));
 
         private static final Comparator<Version> COMPARE_ASCENDING = comparing(a -> a.descriptor);
         private static final Comparator<Version> COMPARE_DESCENDING = COMPARE_ASCENDING.reversed();
