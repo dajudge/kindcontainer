@@ -18,7 +18,7 @@ Add the kindcontainer dependency:
         <dependency>
             <groupId>com.dajudge.kindcontainer</groupId>
             <artifactId>kindcontainer</artifactId>
-            <version>1.0.0</version>
+            <version>1.0.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -33,7 +33,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation "com.dajudge.kindcontainer:kindcontainer:1.0.0"
+    testImplementation "com.dajudge.kindcontainer:kindcontainer:1.0.1"
 }
 ```
 ### Use in JUnit test
