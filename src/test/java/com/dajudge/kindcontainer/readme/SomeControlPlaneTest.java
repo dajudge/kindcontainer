@@ -15,7 +15,7 @@ public class SomeControlPlaneTest {
 
     @Test
     public void verify_no_node_is_present() {
-        // Do something useful with the fabric8 client it returns!
+        // Create a fabric8 client and use it!
         try (final KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(KUBE.getKubeconfig()))) {
             assertTrue(client.nodes().list().getItems().isEmpty());
         }
