@@ -50,7 +50,6 @@ import static java.util.stream.Collectors.toList;
 public class KindContainer<T extends KindContainer<T>> extends KubernetesContainer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(KindContainer.class);
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
-    private static final Yaml YAML = new Yaml();
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
     private static final String KUBEADM_CONFIG = CONTAINTER_WORKDIR + "/kubeadmConfig.yaml";
     private static final String INTERNAL_HOSTNAME = "kindcontainer";
