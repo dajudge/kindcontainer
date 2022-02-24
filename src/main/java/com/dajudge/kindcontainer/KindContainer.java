@@ -27,6 +27,7 @@ import java.util.stream.Stream;
 import static com.dajudge.kindcontainer.TemplateHelpers.*;
 import static com.dajudge.kindcontainer.Utils.createNetwork;
 import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
+import static com.dajudge.kindcontainer.client.KubeConfigUtils.replaceServerInKubeconfig;
 import static com.github.dockerjava.api.model.AccessMode.ro;
 import static java.lang.String.format;
 import static java.lang.String.join;
@@ -60,6 +61,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         put("/run", "rw");
         put("/tmp", "rw");
     }};
+    private static final String KUBECONFIG_PATH = "/etc/kubernetes/admin.conf";
     private final CountDownLatch provisioningLatch = new CountDownLatch(1);
     private final String volumeName = "kindcontainer-" + UUID.randomUUID();
     private final Version version;
@@ -298,24 +300,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     @Override
-    public String getKubeconfig() {
-        return getKubeconfig(format("https://%s:%s", getHost(), getMappedPort(INTERNAL_API_SERVER_PORT)));
-    }
-
-    @Override
-    public String getInternalKubeconfig() {
-        return getKubeconfig(format("https://%s:%d", INTERNAL_HOSTNAME, INTERNAL_API_SERVER_PORT));
-    }
-
-    @SuppressWarnings("unchecked")
-    private synchronized String getKubeconfig(final String server) {
-        final String kubeconfig = copyFileFromContainer("/etc/kubernetes/admin.conf", Utils::readString);
-        final Map<String, Object> kubeConfigMap = YAML.load(kubeconfig);
-        final List<Map<String, Object>> clusters = (List<Map<String, Object>>) kubeConfigMap.get("clusters");
-        final Map<String, Object> firstCluster = clusters.iterator().next();
-        final Map<String, Object> cluster = (Map<String, Object>) firstCluster.get("cluster");
-        cluster.put("server", server);
-        return YAML.dump(kubeConfigMap);
+    protected String getKubeconfig(final String server) {
+        return replaceServerInKubeconfig(server, copyFileFromContainer(KUBECONFIG_PATH, Utils::readString));
     }
 
     @Override

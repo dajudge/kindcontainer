@@ -203,7 +203,8 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
         return file.toPath();
     }
 
-    private String getKubeconfig(final String url) {
+    @Override
+    protected String getKubeconfig(final String url) {
         final Cluster cluster = new Cluster();
         cluster.setName("apiserver");
         cluster.setCluster(new ClusterSpec());
@@ -230,16 +231,6 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     private String base64(final String str) {
         return Base64.getEncoder().encodeToString(str.getBytes(US_ASCII));
-    }
-
-    @Override
-    public String getInternalKubeconfig() {
-        return getKubeconfig(format("https://%s:%d", INTERNAL_HOSTNAME, INTERNAL_API_SERVER_PORT));
-    }
-
-    @Override
-    public String getKubeconfig() {
-        return getKubeconfig(format("https://%s:%d", getHost(), getMappedPort(INTERNAL_API_SERVER_PORT)));
     }
 
     @Override

@@ -56,7 +56,11 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
      *
      * @return the kubeconfig
      */
-    public abstract String getInternalKubeconfig();
+    public String getInternalKubeconfig() {
+        return getKubeconfig(format("https://%s:%d", getInternalHostname(), getInternalPort()));
+    }
+
+    protected abstract String getKubeconfig(final String server);
 
     public T withHelm3(final ThrowingConsumer<Helm3Container<?>, Exception> consumer) {
         return withPostStartupExecution(() -> consumer.accept(helm3()));
@@ -97,7 +101,9 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
      *
      * @return the kubeconfig
      */
-    public abstract String getKubeconfig();
+    public final String getKubeconfig() {
+        return getKubeconfig(format("https://%s:%d", getHost(), getMappedPort(getInternalPort())));
+    }
 
     @Override
     public void stop() {
