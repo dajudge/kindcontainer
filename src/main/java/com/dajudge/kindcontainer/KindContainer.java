@@ -57,6 +57,10 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final String CACERTS_INSTALL_DIR = "/usr/local/share/ca-certificates";
     private static final Pattern PROVISIONING_TRIGGER_PATTERN = Pattern.compile(".*Reached target .*Multi-User System.*");
+    private static final HashMap<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
+        put("/run", "rw");
+        put("/tmp", "rw");
+    }};
     private static final String KUBECONFIG_PATH = "/etc/kubernetes/admin.conf";
     private final CountDownLatch provisioningLatch = new CountDownLatch(1);
     private final String volumeName = "kindcontainer-" + UUID.randomUUID();
@@ -102,10 +106,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                 })
                 .withEnv("KUBECONFIG", "/etc/kubernetes/admin.conf")
                 .withPrivilegedMode(true)
-                .withTmpFs(new HashMap<String, String>() {{
-                    put("/run", "rw");
-                    put("/tmp", "rw");
-                }})
+                .withTmpFs(TMP_FILESYSTEMS)
                 .withNetwork(network)
                 .withNetworkAliases(INTERNAL_HOSTNAME);
 
