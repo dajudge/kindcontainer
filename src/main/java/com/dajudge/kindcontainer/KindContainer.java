@@ -27,6 +27,7 @@ import java.util.stream.Stream;
 import static com.dajudge.kindcontainer.TemplateHelpers.*;
 import static com.dajudge.kindcontainer.Utils.createNetwork;
 import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
+import static com.dajudge.kindcontainer.client.KubeConfigUtils.replaceServerInKubeconfig;
 import static com.github.dockerjava.api.model.AccessMode.ro;
 import static java.lang.String.format;
 import static java.lang.String.join;
@@ -49,13 +50,17 @@ import static java.util.stream.Collectors.toList;
 public class KindContainer<T extends KindContainer<T>> extends KubernetesContainer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(KindContainer.class);
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
-    private static final Yaml YAML = new Yaml();
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
     private static final String KUBEADM_CONFIG = CONTAINTER_WORKDIR + "/kubeadmConfig.yaml";
     private static final String INTERNAL_HOSTNAME = "kindcontainer";
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final String CACERTS_INSTALL_DIR = "/usr/local/share/ca-certificates";
     private static final Pattern PROVISIONING_TRIGGER_PATTERN = Pattern.compile(".*Reached target .*Multi-User System.*");
+    private static final HashMap<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
+        put("/run", "rw");
+        put("/tmp", "rw");
+    }};
+    private static final String KUBECONFIG_PATH = "/etc/kubernetes/admin.conf";
     private final CountDownLatch provisioningLatch = new CountDownLatch(1);
     private final String volumeName = "kindcontainer-" + UUID.randomUUID();
     private final Version version;
@@ -100,10 +105,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                 })
                 .withEnv("KUBECONFIG", "/etc/kubernetes/admin.conf")
                 .withPrivilegedMode(true)
-                .withTmpFs(new HashMap<String, String>() {{
-                    put("/run", "rw");
-                    put("/tmp", "rw");
-                }})
+                .withTmpFs(TMP_FILESYSTEMS)
                 .withNetwork(network)
                 .withNetworkAliases(INTERNAL_HOSTNAME);
 
@@ -297,24 +299,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     @Override
-    public String getKubeconfig() {
-        return getKubeconfig(format("https://%s:%s", getHost(), getMappedPort(INTERNAL_API_SERVER_PORT)));
-    }
-
-    @Override
-    public String getInternalKubeconfig() {
-        return getKubeconfig(format("https://%s:%d", INTERNAL_HOSTNAME, INTERNAL_API_SERVER_PORT));
-    }
-
-    @SuppressWarnings("unchecked")
-    private synchronized String getKubeconfig(final String server) {
-        final String kubeconfig = copyFileFromContainer("/etc/kubernetes/admin.conf", Utils::readString);
-        final Map<String, Object> kubeConfigMap = YAML.load(kubeconfig);
-        final List<Map<String, Object>> clusters = (List<Map<String, Object>>) kubeConfigMap.get("clusters");
-        final Map<String, Object> firstCluster = clusters.iterator().next();
-        final Map<String, Object> cluster = (Map<String, Object>) firstCluster.get("cluster");
-        cluster.put("server", server);
-        return YAML.dump(kubeConfigMap);
+    protected String getKubeconfig(final String server) {
+        return replaceServerInKubeconfig(server, copyFileFromContainer(KUBECONFIG_PATH, Utils::readString));
     }
 
     @Override
@@ -403,6 +389,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     public enum Version {
         VERSION_1_21_2(new KubernetesVersionDescriptor(1, 21, 2)),
         VERSION_1_22_4(new KubernetesVersionDescriptor(1, 22, 4)),
+        VERSION_1_22_5(new KubernetesVersionDescriptor(1, 22, 5)),
         VERSION_1_23_3(new KubernetesVersionDescriptor(1, 23, 3));
 
         private static final Comparator<Version> COMPARE_ASCENDING = comparing(a -> a.descriptor);
