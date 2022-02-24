@@ -403,7 +403,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     public enum Version {
         VERSION_1_21_2(new KubernetesVersionDescriptor(1, 21, 2)),
         VERSION_1_22_4(new KubernetesVersionDescriptor(1, 22, 4)),
-        VERSION_1_23_4(new KubernetesVersionDescriptor(1, 23, 3));
+        VERSION_1_23_3(new KubernetesVersionDescriptor(1, 23, 3));
 
         private static final Comparator<Version> COMPARE_ASCENDING = comparing(a -> a.descriptor);
         private static final Comparator<Version> COMPARE_DESCENDING = COMPARE_ASCENDING.reversed();
