@@ -44,7 +44,7 @@ public class SomeKubernetesTest {
 
     @Test
     public void verify_node_is_present() {
-        // Do something useful with the fabric8 client it returns!
+        // Create a fabric8 client and use it!
         try(final KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(KUBE.getKubeconfig()))) {
             assertEquals(1, client.nodes().list().getItems().size());
         }
@@ -67,7 +67,7 @@ public class SomeControlPlaneTest {
 
     @Test
     public void verify_no_node_is_present() {
-        // Do something useful with the fabric8 client it returns!
+        // Create a fabric8 client and use it!
         try (final KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(KUBE.getKubeconfig()))) {
             assertTrue(client.nodes().list().getItems().isEmpty());
         }
