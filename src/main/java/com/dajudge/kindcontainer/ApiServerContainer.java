@@ -31,7 +31,9 @@ import static java.time.Duration.ofMillis;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
+import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 import static org.testcontainers.utility.MountableFile.forHostPath;
 
 public class ApiServerContainer<T extends ApiServerContainer<T>> extends KubernetesContainer<T> {
@@ -143,7 +145,13 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
         waitForApiServer();
+        waitForDefaultNamespace();
         super.containerIsStarting(containerInfo);
+    }
+
+    private void waitForDefaultNamespace() {
+        await().timeout(10, SECONDS)
+                .until(() -> client().v1().namespaces().find("default"), Optional::isPresent);
     }
 
     private void waitForApiServer() {
