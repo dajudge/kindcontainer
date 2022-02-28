@@ -28,7 +28,7 @@ import static java.util.Arrays.asList;
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
     private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
     private Helm3Container<?> helm3;
-    private KubectlContainer<?> kubectl;
+    private KubectlContainer<?, T> kubectl;
 
     public KubernetesContainer(final DockerImageName dockerImageName) {
         super(dockerImageName);
@@ -66,7 +66,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         return withPostStartupExecution(() -> consumer.accept(helm3()));
     }
 
-    public T withKubectl(final ThrowingConsumer<KubectlContainer<?>, Exception> consumer) {
+    public T withKubectl(final ThrowingConsumer<KubectlContainer<?, T>, Exception> consumer) {
         return withPostStartupExecution(() -> consumer.accept(kubectl()));
     }
 
@@ -78,9 +78,10 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         return helm3;
     }
 
-    public synchronized KubectlContainer<?> kubectl() {
+    public synchronized KubectlContainer<?, T> kubectl() {
         if (kubectl == null) {
-            kubectl = new KubectlContainer<>(DEFAULT_KUBECTL_IMAGE, this::getInternalKubeconfig).withNetwork(getNetwork());
+            kubectl = new KubectlContainer<>(DEFAULT_KUBECTL_IMAGE, this::getInternalKubeconfig, self())
+                    .withNetwork(getNetwork());
             kubectl.start();
         }
         return kubectl;

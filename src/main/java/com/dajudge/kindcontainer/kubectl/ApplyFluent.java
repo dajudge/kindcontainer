@@ -11,45 +11,52 @@ import org.testcontainers.shaded.org.apache.commons.io.IOUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import static java.lang.Thread.currentThread;
 import static java.util.Arrays.asList;
 import static java.util.function.Function.identity;
 
-public class ApplyFluent<P> {
+public class ApplyFluent<P, C> {
     private static final Logger LOG = LoggerFactory.getLogger(ApplyFluent.class);
     private final ExecInContainer exec;
     private final FileTarget fileTarget;
     private final P parent;
     private final List<Runnable> preExecutionRunnables = new ArrayList<>();
     private final List<String> files = new ArrayList<>();
+    private final C k8s;
     private String namespace;
 
-    ApplyFluent(final ExecInContainer exec, final FileTarget fileTarget, final P parent) {
+    ApplyFluent(final ExecInContainer exec, final FileTarget fileTarget, final P parent, final C k8s) {
         this.exec = exec;
         this.fileTarget = fileTarget;
         this.parent = parent;
+        this.k8s = k8s;
     }
 
-    public ApplyFluent<P> namespace(final String namespace) {
+    public ApplyFluent<P, C> namespace(final String namespace) {
         this.namespace = namespace;
         return this;
     }
 
-    public ApplyFluent<P> fileFromClasspath(final String resourceName) {
+    public ApplyFluent<P, C> fileFromClasspath(final String resourceName) {
         return fileFromClasspath(resourceName, identity());
     }
 
-    public ApplyFluent<P> fileFromClasspath(final String resourceName, final Function<byte[], byte[]> transform) {
+    public ApplyFluent<P, C> fileFromClasspath(final String resourceName, final BiFunction<C, byte[], byte[]> transform) {
         final String path = "/tmp/classpath:" + resourceName
                 .replaceAll("_", "__")
                 .replaceAll("[^a-zA-Z0-9.]", "_");
         files.add(path);
-        final byte[] bytes = transform.apply(resourceToByteArray(resourceName));
+        final byte[] bytes = transform.apply(k8s, resourceToByteArray(resourceName));
         final Transferable transferable = Transferable.of(bytes);
         preExecutionRunnables.add(() -> fileTarget.copyFileToContainer(transferable, path));
         return this;
+    }
+
+    public ApplyFluent<P, C> fileFromClasspath(final String resourceName, final Function<byte[], byte[]> transform) {
+        return fileFromClasspath(resourceName, (k8s, bytes) -> transform.apply(bytes));
     }
 
     private byte[] resourceToByteArray(final String resourceName) {
