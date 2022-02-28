@@ -68,6 +68,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private String serviceSubnet = "10.245.0.0/16";
     private List<String> certs = emptyList();
     private Duration startupTimeout = Duration.ofSeconds(300);
+    private final Network.NetworkImpl network = createNetwork();
 
     /**
      * Constructs a new <code>KindContainer</code> with the latest supported Kubernetes version.
@@ -84,7 +85,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     public KindContainer(final Version version) {
         super(getDockerImage(version));
         this.version = version;
-        final Network.NetworkImpl network = createNetwork();
         this.withStartupTimeout(ofSeconds(300))
                 .withLogConsumer(outputFrame -> {
                     if (PROVISIONING_TRIGGER_PATTERN.matcher(outputFrame.getUtf8String()).matches()) {
@@ -328,7 +328,11 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                 LOG.warn("Failed to remove volume: {}", volumeName, e);
             }
         }
-
+        try {
+            network.close();
+        } catch (final Exception e) {
+            LOG.warn("Failed to close network", e);
+        }
     }
 
     private void waitForNodeReady() {
