@@ -76,19 +76,25 @@ public class ApplyFluent<P, C> {
     }
 
     public P run() throws IOException, ExecutionException, InterruptedException {
-        final List<String> cmdline = new ArrayList<>();
-        cmdline.add("kubectl");
-        cmdline.add("apply");
-        if (namespace != null) {
-            cmdline.add("--namespace");
-            cmdline.add(namespace);
+        try {
+            final List<String> cmdline = new ArrayList<>();
+            cmdline.add("kubectl");
+            cmdline.add("apply");
+            if (namespace != null) {
+                cmdline.add("--namespace");
+                cmdline.add(namespace);
+            }
+            files.forEach(file -> {
+                cmdline.add("-f");
+                cmdline.add(file);
+            });
+            preExecutionRunnables.forEach(Runnable::run);
+            exec.safeExecInContainer(cmdline.toArray(new String[]{}));
+            return parent;
+        } finally {
+            preExecutionRunnables.clear();
+            files.clear();
+            namespace = null;
         }
-        files.forEach(file -> {
-            cmdline.add("-f");
-            cmdline.add(file);
-        });
-        preExecutionRunnables.forEach(Runnable::run);
-        exec.safeExecInContainer(cmdline.toArray(new String[]{}));
-        return parent;
     }
 }

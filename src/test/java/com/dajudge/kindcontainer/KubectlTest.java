@@ -1,8 +1,11 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.exception.ExecutionException;
 import io.fabric8.kubernetes.api.model.ConfigMap;
+import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BiFunction;
@@ -10,12 +13,37 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import static com.dajudge.kindcontainer.TestUtils.runWithClient;
+import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 public class KubectlTest {
+
+    @Test
+    public void multiple_invocations_work() {
+        withK8s(k8s -> k8s.withKubectl(kubectl -> {
+            kubectl.apply
+                    .fileFromClasspath(
+                            "manifests/interpolation-configmap.yaml",
+                            bytes -> new String(bytes, UTF_8)
+                                    .replace("{{ my-value }}", "hello, world!")
+                                    .replace("{{ name }}", "lolcats")
+                                    .getBytes(UTF_8)
+                    ).run();
+        }), k8s -> {
+            try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(k8s.getKubeconfig()))) {
+                client.inNamespace("default").configMaps().withName("lolcats").delete();
+                k8s.kubectl().apply.fileFromClasspath("manifests/serviceaccount1.yaml").run();
+                assertNull(client.inNamespace("default").configMaps().withName("lolcats").get());
+            } catch (final IOException | ExecutionException | InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        });
+    }
+
     @Test
     public void can_interpolate_static_value() {
         final String staticValue = UUID.randomUUID().toString();
