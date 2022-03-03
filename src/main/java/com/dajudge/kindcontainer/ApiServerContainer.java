@@ -9,7 +9,6 @@ import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.Network;
 import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.shaded.com.google.common.io.Files;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
@@ -23,12 +22,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static com.dajudge.kindcontainer.Utils.createNetwork;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.time.Duration.ZERO;
 import static java.time.Duration.ofMillis;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -50,11 +49,11 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     private static final String DOCKER_BASE_PATH = "/docker";
     private static final String IP_ADDRESS_PATH = DOCKER_BASE_PATH + "/ip.txt";
     private static final String ETCD_HOSTNAME_PATH = DOCKER_BASE_PATH + "/etcd.txt";
-    private static final String INTERNAL_HOSTNAME = "apiserver";
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final File tempDir = Files.createTempDir();
+    private final CertAuthority etcdCa = new CertAuthority(System::currentTimeMillis, "CN=etcd CA");
     private final CertAuthority apiServerCa = new CertAuthority(System::currentTimeMillis, "CN=API Server CA");
-    private final EtcdContainer etcd;
+    private EtcdContainer etcd;
     private KeyStoreWrapper apiServerKeyPair;
 
     /**
@@ -71,8 +70,6 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
      */
     public ApiServerContainer(final Version version) {
         super(getDockerImage(version));
-        final Network network = createNetwork();
-        etcd = new EtcdContainer(network);
         this
                 .withCreateContainerCmdModifier(this::createContainerCmdModifier)
                 .withEnv("ETCD_CLIENT_KEY", ETCD_CLIENT_KEY)
@@ -83,18 +80,11 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .withEnv("API_SERVER_KEY", API_SERVER_KEY)
                 .withEnv("API_SERVER_PUBKEY", API_SERVER_PUBKEY)
                 .withEnv("IP_ADDRESS_PATH", IP_ADDRESS_PATH)
-                .withEnv("ETCD_HOSTNAME_PATH", ETCD_HOSTNAME_PATH)
-                .withNetwork(network)
-                .withNetworkAliases(INTERNAL_HOSTNAME);
+                .withEnv("ETCD_HOSTNAME_PATH", ETCD_HOSTNAME_PATH);
     }
 
     private static DockerImageName getDockerImage(final Version version) {
         return DockerImageName.parse(format("k8s.gcr.io/kube-apiserver:%s", version.descriptor.getKubernetesVersion()));
-    }
-
-    @Override
-    public String getInternalHostname() {
-        return INTERNAL_HOSTNAME;
     }
 
     @Override
@@ -120,7 +110,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
             put("etcd-cafile", ETCD_CLIENT_CA);
             put("etcd-certfile", ETCD_CLIENT_CERT);
             put("etcd-keyfile", ETCD_CLIENT_KEY);
-            put("etcd-servers", format("https://%s:2379", etcd.getEtcdIpAddress()));
+            put("etcd-servers", "https://localhost:2379");
             put("service-account-key-file", API_SERVER_PUBKEY);
             put("service-account-signing-key-file", API_SERVER_KEY);
             put("service-account-issuer", "https://kubernetes.default.svc.cluster.local");
@@ -131,7 +121,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
             put("requestheader-group-headers", "X-Remote-Group");
             put("requestheader-username-headers", "X-Remote-User");
             put("runtime-config", "");
-            put("secure-port", String.format("%d", INTERNAL_API_SERVER_PORT));
+            put("secure-port", format("%d", INTERNAL_API_SERVER_PORT));
             put("service-cluster-ip-range", "10.96.0.0/16");
         }}.entrySet().stream()
                 .map(e -> format("--%s=%s", e.getKey(), e.getValue()))
@@ -144,9 +134,17 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
+        etcd = new EtcdContainer(etcdCa, containerInfo.getId());
+        etcd.start();
         waitForApiServer();
         waitForDefaultNamespace();
         super.containerIsStarting(containerInfo);
+    }
+
+    @Override
+    public void start() {
+        writeCertificates();
+        super.start();
     }
 
     private void waitForDefaultNamespace() {
@@ -165,44 +163,32 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .until(() -> null != TinyK8sClient.fromKubeconfig(getKubeconfig()).v1().nodes().list());
     }
 
-    @Override
-    public void start() {
+    private void writeCertificates() {
         try {
-            etcd.start();
-            writeCertificates();
-            super.start();
-        } catch (final RuntimeException e) {
-            etcd.close();
-            throw e;
+            apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
+                    new GeneralName(GeneralName.iPAddress, Utils.resolve(getHost())),
+                    new GeneralName(GeneralName.dNSName, "localhost"),
+                    new GeneralName(GeneralName.iPAddress, "127.0.0.1")
+            ));
+            final KeyStoreWrapper etcdClientKeyPair = etcdCa.newKeyPair("CN=API Server", emptyList());
+            final Path apiServerCert = writeTempFile("apiServer.crt", apiServerKeyPair.getCertificatePem());
+            final Path apiServerKey = writeTempFile("apiServer.key", apiServerKeyPair.getPrivateKeyPem());
+            final Path apiServerPubkey = writeTempFile("apiServer.pub", apiServerKeyPair.getPublicKeyPem());
+            final Path apiServerCaCert = writeTempFile("apiServer.ca.crt", apiServerCa.getCaKeyStore().getCertificatePem());
+            final Path etcdCert = writeTempFile("etcd.crt", etcdClientKeyPair.getCertificatePem());
+            final Path etcdKey = writeTempFile("etcd.key", etcdClientKeyPair.getPrivateKeyPem());
+            final Path etcdCaCert = writeTempFile("etcd.ca.crt", etcdCa.getCaKeyStore().getCertificatePem());
+
+            withCopyFileToContainer(forHostPath(apiServerCert), API_SERVER_CERT);
+            withCopyFileToContainer(forHostPath(apiServerKey), API_SERVER_KEY);
+            withCopyFileToContainer(forHostPath(apiServerCaCert), API_SERVER_CA);
+            withCopyFileToContainer(forHostPath(apiServerPubkey), API_SERVER_PUBKEY);
+            withCopyFileToContainer(forHostPath(etcdCert), ETCD_CLIENT_CERT);
+            withCopyFileToContainer(forHostPath(etcdKey), ETCD_CLIENT_KEY);
+            withCopyFileToContainer(forHostPath(etcdCaCert), ETCD_CLIENT_CA);
         } catch (final IOException e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to create certificate data", e);
         }
-    }
-
-    private KeyStoreWrapper writeCertificates() throws IOException {
-        apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
-                new GeneralName(GeneralName.iPAddress, Utils.resolve(getHost())),
-                new GeneralName(GeneralName.dNSName, "localhost"),
-                new GeneralName(GeneralName.iPAddress, "127.0.0.1"),
-                new GeneralName(GeneralName.dNSName, INTERNAL_HOSTNAME)
-        ));
-        final KeyStoreWrapper etcdClientKeyPair = etcd.newClientKeypair("CN=API Server");
-        final Path apiServerCert = writeTempFile("apiServer.crt", apiServerKeyPair.getCertificatePem());
-        final Path apiServerKey = writeTempFile("apiServer.key", apiServerKeyPair.getPrivateKeyPem());
-        final Path apiServerPubkey = writeTempFile("apiServer.pub", apiServerKeyPair.getPublicKeyPem());
-        final Path apiServerCaCert = writeTempFile("apiServer.ca.crt", apiServerCa.getCaKeyStore().getCertificatePem());
-        final Path etcdCert = writeTempFile("etcd.crt", etcdClientKeyPair.getCertificatePem());
-        final Path etcdKey = writeTempFile("etcd.key", etcdClientKeyPair.getPrivateKeyPem());
-        final Path etcdCaCert = writeTempFile("etcd.ca.crt", etcd.getCaCertificatePem());
-
-        withCopyFileToContainer(forHostPath(apiServerCert), API_SERVER_CERT);
-        withCopyFileToContainer(forHostPath(apiServerKey), API_SERVER_KEY);
-        withCopyFileToContainer(forHostPath(apiServerCaCert), API_SERVER_CA);
-        withCopyFileToContainer(forHostPath(apiServerPubkey), API_SERVER_PUBKEY);
-        withCopyFileToContainer(forHostPath(etcdCert), ETCD_CLIENT_CERT);
-        withCopyFileToContainer(forHostPath(etcdKey), ETCD_CLIENT_KEY);
-        withCopyFileToContainer(forHostPath(etcdCaCert), ETCD_CLIENT_CA);
-        return apiServerKeyPair;
     }
 
     private Path writeTempFile(final String filename, final String data) throws IOException {

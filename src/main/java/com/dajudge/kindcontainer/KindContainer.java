@@ -10,10 +10,8 @@ import com.github.dockerjava.api.model.Volume;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
-import org.testcontainers.containers.Network;
 import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
-import org.testcontainers.shaded.org.yaml.snakeyaml.Yaml;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
@@ -25,7 +23,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.TemplateHelpers.*;
-import static com.dajudge.kindcontainer.Utils.createNetwork;
 import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.replaceServerInKubeconfig;
 import static com.github.dockerjava.api.model.AccessMode.ro;
@@ -52,7 +49,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
     private static final String KUBEADM_CONFIG = CONTAINTER_WORKDIR + "/kubeadmConfig.yaml";
-    private static final String INTERNAL_HOSTNAME = "kindcontainer";
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final String CACERTS_INSTALL_DIR = "/usr/local/share/ca-certificates";
     private static final Pattern PROVISIONING_TRIGGER_PATTERN = Pattern.compile(".*Reached target .*Multi-User System.*");
@@ -61,6 +57,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
         put("/tmp", "rw");
     }};
     private static final String KUBECONFIG_PATH = "/etc/kubernetes/admin.conf";
+    private static final String NODE_NAME = "kind";
     private final CountDownLatch provisioningLatch = new CountDownLatch(1);
     private final String volumeName = "kindcontainer-" + UUID.randomUUID();
     private final Version version;
@@ -68,7 +65,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private String serviceSubnet = "10.245.0.0/16";
     private List<String> certs = emptyList();
     private Duration startupTimeout = Duration.ofSeconds(300);
-    private final Network.NetworkImpl network = createNetwork();
 
     /**
      * Constructs a new <code>KindContainer</code> with the latest supported Kubernetes version.
@@ -105,19 +101,12 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                 })
                 .withEnv("KUBECONFIG", "/etc/kubernetes/admin.conf")
                 .withPrivilegedMode(true)
-                .withTmpFs(TMP_FILESYSTEMS)
-                .withNetwork(network)
-                .withNetworkAliases(INTERNAL_HOSTNAME);
+                .withTmpFs(TMP_FILESYSTEMS);
 
     }
 
     private static DockerImageName getDockerImage(final Version version) {
         return DockerImageName.parse(format("kindest/node:%s", version.descriptor.getKubernetesVersion()));
-    }
-
-    @Override
-    public String getInternalHostname() {
-        return INTERNAL_HOSTNAME;
     }
 
     @Override
@@ -183,8 +172,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                 containerInternalIpAddress,
                 "127.0.0.1",
                 "localhost",
-                getContainerIpAddress(),
-                INTERNAL_HOSTNAME
+                getContainerIpAddress()
         ));
         LOG.debug("SANs for Kube-API server certificate: {}", subjectAlternativeNames);
         final Map<String, String> params = new HashMap<String, String>() {{
@@ -213,7 +201,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     private void untaintMasterNode() throws IOException, InterruptedException {
-        kubectl("taint", "node", INTERNAL_HOSTNAME, "node-role.kubernetes.io/master:NoSchedule-");
+        kubectl("taint", "node", NODE_NAME, "node-role.kubernetes.io/master:NoSchedule-");
     }
 
     private void kubeadmInit(final Map<String, String> params) throws IOException, InterruptedException {
@@ -226,7 +214,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                     "--config=" + kubeadmConfig,
                     "--skip-token-print",
                     // Use predetermined node name
-                    "--node-name=" + INTERNAL_HOSTNAME,
+                    "--node-name=" + NODE_NAME,
                     // increase verbosity for debugging
                     "--v=6"
             ));
@@ -327,11 +315,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
             } catch (final Exception e) {
                 LOG.warn("Failed to remove volume: {}", volumeName, e);
             }
-        }
-        try {
-            network.close();
-        } catch (final Exception e) {
-            LOG.warn("Failed to close network", e);
         }
     }
 
