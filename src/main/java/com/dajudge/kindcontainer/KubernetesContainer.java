@@ -42,7 +42,9 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
      *
      * @return the internal hostname
      */
-    public abstract String getInternalHostname();
+    public final String getInternalHostname() {
+        return "localhost";
+    }
 
     /**
      * The port of the API server in the container's docker network.
@@ -72,7 +74,8 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
 
     public synchronized Helm3Container<?> helm3() {
         if (helm3 == null) {
-            helm3 = new Helm3Container<>(this::getInternalKubeconfig, getNetwork());
+            helm3 = new Helm3Container<>(this::getInternalKubeconfig)
+                    .withNetworkMode("container:" + getContainerId());
             helm3.start();
         }
         return helm3;
@@ -81,7 +84,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     public synchronized KubectlContainer<?, T> kubectl() {
         if (kubectl == null) {
             kubectl = new KubectlContainer<>(DEFAULT_KUBECTL_IMAGE, this::getInternalKubeconfig, self())
-                    .withNetwork(getNetwork());
+                    .withNetworkMode("container:" + getContainerId());
             kubectl.start();
         }
         return kubectl;
