@@ -15,8 +15,7 @@ public class StaticContainers {
     public synchronized static KindContainer<?> kind() {
         if (kind == null) {
             kind = new KindContainer<>()
-                    .withExposedPorts(30000)
-                    .withCaCerts(singletonList(stringResource("test.crt")));
+                    .withExposedPorts(30000);
             kind.start();
             Runtime.getRuntime().addShutdownHook(new Thread(kind::close));
         }

@@ -10,6 +10,7 @@ import com.github.dockerjava.api.model.Volume;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
+import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.utility.DockerImageName;
@@ -22,21 +23,22 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import static com.dajudge.kindcontainer.TemplateHelpers.*;
+import static com.dajudge.kindcontainer.TemplateHelpers.templateContainerFile;
+import static com.dajudge.kindcontainer.TemplateHelpers.templateResource;
 import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.replaceServerInKubeconfig;
 import static com.github.dockerjava.api.model.AccessMode.ro;
 import static java.lang.String.format;
 import static java.lang.String.join;
+import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.*;
 
 /**
  * A Testcontainer for testing against Kubernetes using
@@ -63,7 +65,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private final Version version;
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
-    private List<String> certs = emptyList();
+    private List<Transferable> certs = new ArrayList<>();
     private Duration startupTimeout = Duration.ofSeconds(300);
 
     /**
@@ -126,13 +128,13 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     /**
-     * Adds certificates to the container's trust anchors.
+     * Adds a certificate to the container's trust anchors.
      *
-     * @param certs the PEM encoded certificates
+     * @param cert the PEM encoded certificate
      * @return <code>this</code>
      */
-    public T withCaCerts(final Collection<String> certs) {
-        this.certs = new ArrayList<>(certs);
+    public T withCaCert(final Transferable cert) {
+        this.certs.add(cert);
         return self();
     }
 
@@ -191,11 +193,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
             return;
         }
         for (int i = 0; i < certs.size(); i++) {
-            writeContainerFile(
-                    this,
-                    certs.get(i),
-                    format("%s/custom-cert-%d.crt", CACERTS_INSTALL_DIR, i)
-            );
+            copyFileToContainer(certs.get(i), format("%s/custom-cert-%d.crt", CACERTS_INSTALL_DIR, i));
         }
         exec(singletonList("update-ca-certificates"));
     }
