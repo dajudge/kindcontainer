@@ -1,6 +1,9 @@
 package com.dajudge.kindcontainer.client.config;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import static com.fasterxml.jackson.annotation.JsonInclude.Include.NON_EMPTY;
 
 public class UserSpec {
     private String clientCertificateData;
@@ -29,6 +32,7 @@ public class UserSpec {
         this.token = token;
     }
 
+    @JsonInclude(NON_EMPTY)
     public String getToken() {
         return token;
     }

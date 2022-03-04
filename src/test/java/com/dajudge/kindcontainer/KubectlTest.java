@@ -17,8 +17,8 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static com.dajudge.kindcontainer.TestUtils.runWithClient;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
+import static com.dajudge.kindcontainer.util.TestUtils.runWithClient;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
@@ -29,7 +29,7 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 public class KubectlTest {
     @Parameterized.Parameters
     public static Collection<Supplier<KubernetesContainer<?>>> apiServers() {
-        return Arrays.asList(ApiServerContainer::new, KindContainer::new);
+        return Arrays.asList(ApiServerContainer::new, K3sContainer::new, KindContainer::new);
     }
 
     protected final Supplier<KubernetesContainer<?>> k8sFactory;

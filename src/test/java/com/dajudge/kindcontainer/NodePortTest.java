@@ -1,5 +1,6 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.util.TestUtils;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
@@ -8,17 +9,21 @@ import org.junit.Test;
 
 import java.util.HashMap;
 
-import static com.dajudge.kindcontainer.TestUtils.*;
+import static com.dajudge.kindcontainer.util.TestUtils.*;
 import static java.time.Duration.ofSeconds;
 import static org.awaitility.Awaitility.await;
 
-public class NodePortTest {
+public class NodePortTest extends BaseFullContainersTest {
+    public NodePortTest(final KubernetesContainer<?> k8s) {
+        super(k8s.withExposedPorts(30000));
+    }
+
     @Test
     public void exposes_node_port() {
-        final Pod pod = runWithClient(StaticContainers.kind(), client -> {
+        final Pod pod = runWithClient(k8s, client -> {
             return createSimplePod(client, createNewNamespace(client));
         });
-        runWithClient(StaticContainers.kind(), client -> {
+        runWithClient(k8s, client -> {
             client.services().create(new ServiceBuilder()
                     .withNewMetadata()
                     .withName("nginx")
@@ -39,7 +44,7 @@ public class NodePortTest {
                     .build());
             await("testpod")
                     .timeout(ofSeconds(300))
-                    .until(TestUtils.http("http://localhost:" + StaticContainers.kind().getMappedPort(30000)));
+                    .until(TestUtils.http("http://localhost:" + k8s.getMappedPort(30000)));
 
         });
     }

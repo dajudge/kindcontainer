@@ -12,6 +12,22 @@ public class KubeConfig {
     private List<Context> contexts;
     private List<User> users;
 
+    public String getApiVersion() {
+        return apiVersion;
+    }
+
+    public void setApiVersion(final String apiVersion) {
+        this.apiVersion = apiVersion;
+    }
+
+    public String getKind() {
+        return kind;
+    }
+
+    public void setKind(final String kind) {
+        this.kind = kind;
+    }
+
     @JsonProperty("current-context")
     public String getCurrentContext() {
         return currentContext;

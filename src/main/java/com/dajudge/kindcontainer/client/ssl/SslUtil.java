@@ -1,5 +1,8 @@
 package com.dajudge.kindcontainer.client.ssl;
 
+import org.bouncycastle.openssl.PEMKeyPair;
+import org.bouncycastle.openssl.PEMParser;
+import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter;
 import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.shaded.com.google.common.io.ByteStreams;
 
@@ -10,13 +13,13 @@ import javax.net.ssl.TrustManagerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.security.*;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.RSAPrivateCrtKeySpec;
 import java.util.ArrayList;
 import java.util.Base64;
@@ -27,8 +30,10 @@ import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.util.Arrays.asList;
 
 public final class SslUtil {
+    static {
+        Security.addProvider(new org.bouncycastle.jce.provider.BouncyCastleProvider());
+    }
 
-    private static final KeyFactory RSA_KEY_FACTORY = createKeyFactory("RSA");
     private static final CertificateFactory CERT_FACTORY = createCertFactory();
 
     private SslUtil() {
@@ -46,13 +51,9 @@ public final class SslUtil {
         return kmf.getKeyManagers();
     }
 
-    private static PrivateKey getPrivateKey(final ByteArrayInputStream keyStream) throws InvalidKeySpecException, IOException {
-        final byte[] keyBytes = parsePem(keyStream);
-        try {
-            return RSA_KEY_FACTORY.generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
-        } catch (final InvalidKeySpecException e) {
-            return RSA_KEY_FACTORY.generatePrivate(decodePKCS1(keyBytes));
-        }
+    private static PrivateKey getPrivateKey(final InputStream keyStream) throws InvalidKeySpecException, IOException {
+        final PEMKeyPair keys = (PEMKeyPair) new PEMParser(new InputStreamReader(keyStream)).readObject();
+        return new JcaPEMKeyConverter().getKeyPair(keys).getPrivate();
     }
 
     public static TrustManager[] createTrustManagers(ByteArrayInputStream certStream) throws NoSuchAlgorithmException, CertificateException, IOException, KeyStoreException {
