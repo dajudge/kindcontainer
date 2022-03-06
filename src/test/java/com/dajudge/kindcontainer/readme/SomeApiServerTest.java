@@ -9,7 +9,7 @@ import org.junit.Test;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static org.junit.Assert.assertTrue;
 
-public class SomeControlPlaneTest {
+public class SomeApiServerTest {
     @ClassRule
     public static final ApiServerContainer<?> KUBE = new ApiServerContainer<>();
 
