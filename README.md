@@ -103,3 +103,6 @@ public class SomeApiServerTest {
 }
 ```
 Look [here](src/test/java/com/dajudge/kindcontainer/readme/SomeApiServerTest.java) for the reference test.
+
+## Examples
+You can find examples in the [kindcontainer-examples](https://github.com/dajudge/kindcontainer-examples) repository.
