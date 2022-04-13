@@ -5,7 +5,7 @@ import com.dajudge.kindcontainer.client.config.ContextSpec;
 import com.dajudge.kindcontainer.client.config.KubeConfig;
 import com.dajudge.kindcontainer.client.config.UserSpec;
 import com.dajudge.kindcontainer.client.ssl.SslUtil;
-import org.testcontainers.shaded.okhttp3.OkHttpClient;
+import okhttp3.OkHttpClient;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;

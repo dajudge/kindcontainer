@@ -7,8 +7,8 @@ import com.dajudge.kindcontainer.client.model.base.WithMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
-import org.testcontainers.shaded.okhttp3.*;
-import org.testcontainers.shaded.okhttp3.internal.http2.StreamResetException;
+import okhttp3.*;
+import okhttp3.internal.http2.StreamResetException;
 import org.testcontainers.shaded.org.apache.commons.io.input.ProxyInputStream;
 
 import java.io.IOException;
