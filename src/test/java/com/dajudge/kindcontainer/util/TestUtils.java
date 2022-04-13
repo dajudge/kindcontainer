@@ -6,11 +6,10 @@ import com.dajudge.kindcontainer.Utils.ThrowingFunction;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import org.jetbrains.annotations.NotNull;
-import org.testcontainers.shaded.okhttp3.OkHttpClient;
-import org.testcontainers.shaded.okhttp3.Request;
-import org.testcontainers.shaded.okhttp3.Response;
-import org.testcontainers.shaded.okhttp3.ResponseBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
