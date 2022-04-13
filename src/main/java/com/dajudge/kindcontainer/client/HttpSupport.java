@@ -1,5 +1,6 @@
 package com.dajudge.kindcontainer.client;
 
+import com.dajudge.kindcontainer.client.http.*;
 import com.dajudge.kindcontainer.client.model.base.ResourceAction;
 import com.dajudge.kindcontainer.client.model.base.ResourceList;
 import com.dajudge.kindcontainer.client.model.base.WatchStreamItem;
@@ -7,28 +8,25 @@ import com.dajudge.kindcontainer.client.model.base.WithMetadata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
-import okhttp3.*;
-import okhttp3.internal.http2.StreamResetException;
-import org.testcontainers.shaded.org.apache.commons.io.input.ProxyInputStream;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static com.dajudge.kindcontainer.client.Deserialization.JSON_MAPPER;
+import static com.dajudge.kindcontainer.client.http.RequestBody.createFromJson;
 import static com.dajudge.kindcontainer.client.model.base.ResourceAction.ADDED;
 import static java.lang.String.format;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 
 public class HttpSupport {
     private static final Logger LOG = LoggerFactory.getLogger(HttpSupport.class);
-    private final OkHttpClient client;
+    private final TinyHttpClient client;
     private final String masterUrl;
 
-    public HttpSupport(final OkHttpClient client, final String masterUrl) {
+    public HttpSupport(final TinyHttpClient client, final String masterUrl) {
         this.client = client;
         this.masterUrl = masterUrl;
     }
@@ -107,15 +105,11 @@ public class HttpSupport {
             final Consumer<RuntimeException> errorSink
     ) {
         try {
-            final RequestBody wrappedRequestBody = requestBody == null ? null : RequestBody.create(
-                    MediaType.get("application/json"),
-                    JSON_MAPPER.writeValueAsString(requestBody)
-            );
-            final Response result = client.newCall(new Request.Builder()
+            final RequestBody wrappedRequestBody = createFromJson(requestBody);
+            final Response result = client.request()
                     .url(format("%s%s", masterUrl, path))
                     .method(method, wrappedRequestBody)
-                    .build()).execute();
-            final ResponseBody body = result.body();
+                    .execute();
             if (result.code() > 400) {
                 try {
                     if (result.code() == 409) {
@@ -125,30 +119,20 @@ public class HttpSupport {
                     if (result.code() == 404) {
                         return Watch.CLOSED;
                     }
-                    final String bodyString = body == null ? null : body.toString();
+                    final String bodyString = result.bodyAsString(US_ASCII);
                     throw new RuntimeException("HTTP request failed with status " + result.code() + ": " + bodyString);
                 } finally {
-                    if (body != null) {
-                        body.close();
-                    }
+                    result.close();
                 }
             }
 
-            if (body == null) {
-                throw new IllegalStateException("Empty response body");
-            }
-            final InputStream stream = new ProxyInputStream(body.byteStream()) {
-                @Override
-                public void close() {
-                }
-            };
             final AtomicBoolean closing = new AtomicBoolean();
             final CountDownLatch requestCompleted = new CountDownLatch(1);
             new Thread(() -> {
                 try {
                     boolean readNext = true;
                     while (readNext) {
-                        final T item = JSON_MAPPER.readValue(stream, type);
+                        final T item = result.readJsonFromBody(type);
                         readNext = sink.apply(item);
                     }
                 } catch (final IOException e) {
@@ -157,7 +141,7 @@ public class HttpSupport {
                     }
                 } finally {
                     if (!closing.get()) {
-                        body.close();
+                        result.close();
                     }
                     closeCallback.run();
                     requestCompleted.countDown();

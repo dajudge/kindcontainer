@@ -30,7 +30,6 @@ dependencies {
     testImplementation 'io.fabric8:kubernetes-client:5.12.1'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.awaitility:awaitility:4.1.1'
-    testImplementation 'com.squareup.okhttp3:okhttp:4.9.3'
 
     testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.10'
 }
