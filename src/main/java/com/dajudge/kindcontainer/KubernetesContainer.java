@@ -12,6 +12,7 @@ import com.dajudge.kindcontainer.helm.Helm3Container;
 import com.dajudge.kindcontainer.kubectl.KubectlContainer;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
@@ -21,11 +22,12 @@ import static com.dajudge.kindcontainer.client.KubeConfigUtils.parseKubeConfig;
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.serializeKubeConfig;
 import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL_IMAGE;
 import static java.lang.String.format;
+import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.temporal.ChronoUnit.SECONDS;
 import static java.util.Arrays.asList;
 
-public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends GenericContainer<T> {
+public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends BaseGenericContainer<T> {
     private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
     private Helm3Container<?> helm3;
     private KubectlContainer<?, T> kubectl;
@@ -182,5 +184,4 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         }
         return new String(Base64.getDecoder().decode(secret.getData().get("token")), UTF_8);
     }
-
 }
