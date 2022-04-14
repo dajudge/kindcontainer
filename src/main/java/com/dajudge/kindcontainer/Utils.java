@@ -78,10 +78,6 @@ public final class Utils {
         return string.replaceAll("(?m)^", prefix);
     }
 
-    static void writeAsciiFile(final GenericContainer<?> container, final String text, final String path) {
-        container.copyFileToContainer(Transferable.of(text.getBytes(US_ASCII)), path);
-    }
-
     static String resolve(final String hostname) {
         try {
             return InetAddress.getByName(hostname).getHostAddress();

@@ -9,7 +9,6 @@ import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
@@ -48,8 +47,12 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private final CertAuthority etcdCa = new CertAuthority(System::currentTimeMillis, "CN=etcd CA");
     private final CertAuthority apiServerCa = new CertAuthority(System::currentTimeMillis, "CN=API Server CA");
+    private final KeyStoreWrapper apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
+            new GeneralName(GeneralName.iPAddress, Utils.resolve(getHost())),
+            new GeneralName(GeneralName.dNSName, "localhost"),
+            new GeneralName(GeneralName.iPAddress, "127.0.0.1")
+    ));
     private EtcdContainer etcd;
-    private KeyStoreWrapper apiServerKeyPair;
 
     /**
      * Constructs a new <code>ApiServerContainer</code> with the latest supported Kubernetes version.
@@ -65,6 +68,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
      */
     public ApiServerContainer(final Version version) {
         super(getDockerImage(version));
+        final KeyStoreWrapper etcdClientKeyPair = etcdCa.newKeyPair("CN=API Server", emptyList());
         this
                 .withCreateContainerCmdModifier(this::createContainerCmdModifier)
                 .withEnv("ETCD_CLIENT_KEY", ETCD_CLIENT_KEY)
@@ -75,9 +79,14 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .withEnv("API_SERVER_KEY", API_SERVER_KEY)
                 .withEnv("API_SERVER_PUBKEY", API_SERVER_PUBKEY)
                 .withEnv("IP_ADDRESS_PATH", IP_ADDRESS_PATH)
-                .withEnv("ETCD_HOSTNAME_PATH", ETCD_HOSTNAME_PATH);
-
-        writeCertificates();
+                .withEnv("ETCD_HOSTNAME_PATH", ETCD_HOSTNAME_PATH)
+                .withCopyAsciiToContainer(apiServerKeyPair.getCertificatePem(), API_SERVER_CERT)
+                .withCopyAsciiToContainer(apiServerKeyPair.getPrivateKeyPem(), API_SERVER_KEY)
+                .withCopyAsciiToContainer(apiServerKeyPair.getPublicKeyPem(), API_SERVER_PUBKEY)
+                .withCopyAsciiToContainer(apiServerCa.getCaKeyStore().getCertificatePem(), API_SERVER_CA)
+                .withCopyAsciiToContainer(etcdClientKeyPair.getCertificatePem(), ETCD_CLIENT_CERT)
+                .withCopyAsciiToContainer(etcdClientKeyPair.getPrivateKeyPem(), ETCD_CLIENT_KEY)
+                .withCopyAsciiToContainer(etcdCa.getCaKeyStore().getCertificatePem(), ETCD_CLIENT_CA);
     }
 
     private static DockerImageName getDockerImage(final Version version) {
@@ -152,23 +161,6 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .ignoreExceptions()
                 .forever()
                 .until(() -> null != TinyK8sClient.fromKubeconfig(getKubeconfig()).v1().nodes().list());
-    }
-
-    private void writeCertificates() {
-        apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
-                new GeneralName(GeneralName.iPAddress, Utils.resolve(getHost())),
-                new GeneralName(GeneralName.dNSName, "localhost"),
-                new GeneralName(GeneralName.iPAddress, "127.0.0.1")
-        ));
-        final KeyStoreWrapper etcdClientKeyPair = etcdCa.newKeyPair("CN=API Server", emptyList());
-
-        withCopyToContainer(usAsciiBytesOf(apiServerKeyPair.getCertificatePem()), API_SERVER_CERT);
-        withCopyToContainer(usAsciiBytesOf(apiServerKeyPair.getPrivateKeyPem()), API_SERVER_KEY);
-        withCopyToContainer(usAsciiBytesOf(apiServerKeyPair.getPublicKeyPem()), API_SERVER_PUBKEY);
-        withCopyToContainer(usAsciiBytesOf(apiServerCa.getCaKeyStore().getCertificatePem()), API_SERVER_CA);
-        withCopyToContainer(usAsciiBytesOf(etcdClientKeyPair.getCertificatePem()), ETCD_CLIENT_CERT);
-        withCopyToContainer(usAsciiBytesOf(etcdClientKeyPair.getPrivateKeyPem()), ETCD_CLIENT_KEY);
-        withCopyToContainer(usAsciiBytesOf(etcdCa.getCaKeyStore().getCertificatePem()), ETCD_CLIENT_CA);
     }
 
     @Override
@@ -252,9 +244,5 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
         public String toString() {
             return format("%d.%d.%d", descriptor.getMajor(), descriptor.getMinor(), descriptor.getPatch());
         }
-    }
-
-    private static Transferable usAsciiBytesOf(final String string) {
-        return Transferable.of(string.getBytes(US_ASCII));
     }
 }
