@@ -3,13 +3,11 @@ package com.dajudge.kindcontainer.util;
 import com.dajudge.kindcontainer.KubernetesContainer;
 import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
 import com.dajudge.kindcontainer.Utils.ThrowingFunction;
+import com.dajudge.kindcontainer.client.http.Response;
+import com.dajudge.kindcontainer.client.http.TinyHttpClient;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -71,10 +69,8 @@ public final class TestUtils {
     public static Callable<Boolean> http(final String url) {
         return () -> {
             try {
-                final OkHttpClient client = new OkHttpClient();
-                final Request request = new Request.Builder().url(url).build();
-                final Response response = client.newCall(request).execute();
-                try (final ResponseBody body = response.body()) {
+                final TinyHttpClient client = TinyHttpClient.newHttpClient().build();
+                try (final Response response = client.request().url(url).execute();) {
                     return response.code() == 200;
                 }
             } catch (final IOException e) {

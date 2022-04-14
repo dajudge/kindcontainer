@@ -4,13 +4,12 @@ import com.dajudge.kindcontainer.client.config.ClusterSpec;
 import com.dajudge.kindcontainer.client.config.ContextSpec;
 import com.dajudge.kindcontainer.client.config.KubeConfig;
 import com.dajudge.kindcontainer.client.config.UserSpec;
+import com.dajudge.kindcontainer.client.http.TinyHttpClient;
 import com.dajudge.kindcontainer.client.ssl.SslUtil;
-import okhttp3.OkHttpClient;
 
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
 import java.io.ByteArrayInputStream;
 import java.security.SecureRandom;
 import java.util.Base64;
@@ -19,7 +18,7 @@ import java.util.UUID;
 public class TinyK8sClient {
     private final HttpSupport support;
 
-    public TinyK8sClient(final OkHttpClient client, final String masterUrl) {
+    public TinyK8sClient(final TinyHttpClient client, final String masterUrl) {
         this.support = new HttpSupport(client, masterUrl);
     }
 
@@ -47,10 +46,10 @@ public class TinyK8sClient {
             final KeyManager[] keyManagers = SslUtil.createKeyManager(certStream, keyStream, UUID.randomUUID().toString().toCharArray());
             final SSLContext sslContext = SSLContext.getInstance("TLSv1.2");
             sslContext.init(keyManagers, trustManagers, new SecureRandom());
-            final OkHttpClient okhttp = new OkHttpClient.Builder()
-                    .sslSocketFactory(sslContext.getSocketFactory(), (X509TrustManager) trustManagers[0])
+            final TinyHttpClient httpClient = TinyHttpClient.newHttpClient()
+                    .withSslSocketFactory(sslContext.getSocketFactory())
                     .build();
-            return new TinyK8sClient(okhttp, cluster.getServer());
+            return new TinyK8sClient(httpClient, cluster.getServer());
         } catch (final Exception e) {
             throw new RuntimeException("Failed to create client", e);
         }
