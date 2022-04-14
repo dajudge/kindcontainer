@@ -19,7 +19,7 @@ public class ReuseTest {
     public static Collection<Supplier<KubernetesContainer<?>>> apiServers() {
         return Arrays.asList(
                 // TODO ApiServerContainer::new,
-                // TODO KindContainer::new,
+                KindContainer::new,
                 K3sContainer::new
         );
     }

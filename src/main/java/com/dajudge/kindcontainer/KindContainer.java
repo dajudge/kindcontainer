@@ -57,11 +57,11 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final HashMap<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
         put("/run", "rw");
         put("/tmp", "rw");
+        put("/var/lib/containerd", "rw");
     }};
     private static final String KUBECONFIG_PATH = "/etc/kubernetes/admin.conf";
     private static final String NODE_NAME = "kind";
     private final CountDownLatch provisioningLatch = new CountDownLatch(1);
-    private final String volumeName = "kindcontainer-" + UUID.randomUUID();
     private final Version version;
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
@@ -90,14 +90,10 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                     }
                 })
                 .withCreateContainerCmdModifier(cmd -> {
-                    final Volume varVolume = new Volume("/var/lib/containerd");
-                    final Volume modVolume = new Volume("/lib/modules");
                     cmd.withEntrypoint("/usr/local/bin/entrypoint", "/sbin/init")
-                            .withVolumes(varVolume)
                             .withTty(true)
                             .withBinds(
-                                    new Bind(volumeName, varVolume, true),
-                                    new Bind("/lib/modules", modVolume, ro)
+                                    new Bind("/lib/modules", new Volume("/lib/modules"), ro)
                             );
 
                 })
@@ -139,20 +135,22 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     }
 
     @Override
-    protected void containerIsStarting(final InspectContainerResponse containerInfo) {
-        waitForProvisioningSignal();
-        try {
-            final Map<String, String> params = prepareTemplateParams();
-            updateCaCertificates();
-            kubeadmInit(params);
-            installCni(params);
-            installStorage();
-            untaintMasterNode();
-            waitForNodeReady();
-        } catch (final Exception e) {
-            throw new RuntimeException("Failed to initialize node", e);
+    protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
+        if(!reused) {
+            waitForProvisioningSignal();
+            try {
+                final Map<String, String> params = prepareTemplateParams();
+                updateCaCertificates();
+                kubeadmInit(params);
+                installCni(params);
+                installStorage();
+                untaintMasterNode();
+                waitForNodeReady();
+            } catch (final Exception e) {
+                throw new RuntimeException("Failed to initialize node", e);
+            }
         }
-        super.containerIsStarting(containerInfo);
+        super.containerIsStarting(containerInfo, reused);
     }
 
     private void waitForProvisioningSignal() {
@@ -287,33 +285,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     @Override
     protected String getKubeconfig(final String server) {
         return replaceServerInKubeconfig(server, copyFileFromContainer(KUBECONFIG_PATH, Utils::readString));
-    }
-
-    @Override
-    public void start() {
-        createVolumes();
-        super.start();
-    }
-
-    private void createVolumes() {
-        dockerClient.createVolumeCmd()
-                .withName(volumeName)
-                .withLabels(DockerClientFactory.DEFAULT_LABELS)
-                .exec();
-        LOG.debug("Created volume: {}", volumeName);
-    }
-
-    @Override
-    public void stop() {
-        try {
-            super.stop();
-        } finally {
-            try {
-                dockerClient.removeVolumeCmd(volumeName).exec();
-            } catch (final Exception e) {
-                LOG.warn("Failed to remove volume: {}", volumeName, e);
-            }
-        }
     }
 
     private void waitForNodeReady() {
