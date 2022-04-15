@@ -74,6 +74,10 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         return withPostStartupExecution(() -> consumer.accept(kubectl()));
     }
 
+    public T withKubeconfig(final ThrowingConsumer<String, Exception> consumer) {
+        return withPostStartupExecution(() -> consumer.accept(getKubeconfig()));
+    }
+
     public synchronized Helm3Container<?> helm3() {
         if (helm3 == null) {
             helm3 = new Helm3Container<>(this::getInternalKubeconfig)
