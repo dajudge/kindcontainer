@@ -30,15 +30,14 @@ import static com.dajudge.kindcontainer.client.KubeConfigUtils.replaceServerInKu
 import static com.github.dockerjava.api.model.AccessMode.ro;
 import static java.lang.String.format;
 import static java.lang.String.join;
-import static java.nio.charset.StandardCharsets.US_ASCII;
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.*;
+import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toList;
 
 /**
  * A Testcontainer for testing against Kubernetes using
@@ -57,12 +56,12 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private static final HashMap<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
         put("/run", "rw");
         put("/tmp", "rw");
-        put("/var/lib/containerd", "rw");
     }};
     private static final String KUBECONFIG_PATH = "/etc/kubernetes/admin.conf";
     private static final String NODE_NAME = "kind";
     private final CountDownLatch provisioningLatch = new CountDownLatch(1);
     private final Version version;
+    private String volumeName = "kindcontainer-" + UUID.randomUUID();
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
     private List<Transferable> certs = new ArrayList<>();
@@ -90,17 +89,37 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
                     }
                 })
                 .withCreateContainerCmdModifier(cmd -> {
+                    final Volume varVolume = new Volume("/var/lib/containerd");
+                    final Volume modVolume = new Volume("/lib/modules");
                     cmd.withEntrypoint("/usr/local/bin/entrypoint", "/sbin/init")
+                            .withVolumes(varVolume)
                             .withTty(true)
                             .withBinds(
-                                    new Bind("/lib/modules", new Volume("/lib/modules"), ro)
+                                    new Bind(volumeName, varVolume, true),
+                                    new Bind("/lib/modules", modVolume, ro)
                             );
 
                 })
                 .withEnv("KUBECONFIG", "/etc/kubernetes/admin.conf")
                 .withPrivilegedMode(true)
                 .withTmpFs(TMP_FILESYSTEMS);
+    }
 
+    @Override
+    public T withReuse(final boolean reuse) {
+        if (reuse) {
+            this.volumeName = "kindcontainer-reuse-default";
+        }
+        super.withReuse(reuse);
+        return self();
+    }
+
+    public T withReuse(final boolean reuse, final String volumeName) {
+        if (reuse) {
+            this.volumeName = "kindcontainer-reuse-" + volumeName;
+        }
+        super.withReuse(reuse);
+        return self();
     }
 
     private static DockerImageName getDockerImage(final Version version) {
@@ -136,7 +155,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
 
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo, final boolean reused) {
-        if(!reused) {
+        if (!reused) {
             waitForProvisioningSignal();
             try {
                 final Map<String, String> params = prepareTemplateParams();
@@ -285,6 +304,33 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     @Override
     protected String getKubeconfig(final String server) {
         return replaceServerInKubeconfig(server, copyFileFromContainer(KUBECONFIG_PATH, Utils::readString));
+    }
+
+    @Override
+    public void start() {
+        createVolumes();
+        super.start();
+    }
+
+    private void createVolumes() {
+        dockerClient.createVolumeCmd()
+                .withName(volumeName)
+                .withLabels(DockerClientFactory.DEFAULT_LABELS)
+                .exec();
+        LOG.debug("Created volume: {}", volumeName);
+    }
+
+    @Override
+    public void stop() {
+        try {
+            super.stop();
+        } finally {
+            try {
+                dockerClient.removeVolumeCmd(volumeName).exec();
+            } catch (final Exception e) {
+                LOG.warn("Failed to remove volume: {}", volumeName, e);
+            }
+        }
     }
 
     private void waitForNodeReady() {
