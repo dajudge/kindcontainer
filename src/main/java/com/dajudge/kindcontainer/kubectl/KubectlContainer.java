@@ -10,6 +10,7 @@ public class KubectlContainer<T extends KubectlContainer<T, C>, C> extends BaseS
     public final ApplyFluent<KubectlContainer<T, C>, C> apply;
     public final DeleteFluent<KubectlContainer<T, C>> delete;
     public final WaitFluent<KubectlContainer<T, C>> wait;
+    public final CreateFluent<KubectlContainer<T, C>> create;
 
     public KubectlContainer(
             final DockerImageName dockerImageName,
@@ -28,5 +29,6 @@ public class KubectlContainer<T extends KubectlContainer<T, C>, C> extends BaseS
                 this
         );
         wait = new WaitFluent<>(this::safeExecInContainer);
+        create = new CreateFluent<>(this::safeExecInContainer);
     }
 }
