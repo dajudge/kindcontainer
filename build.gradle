@@ -23,7 +23,7 @@ apply from: "${rootProject.projectDir}/publishing.gradle"
 apply from: "${rootProject.projectDir}/signing.gradle"
 
 dependencies {
-    api 'org.testcontainers:testcontainers:1.17.0'
+    api 'org.testcontainers:testcontainers:1.17.1'
     implementation 'org.bouncycastle:bcpkix-jdk15on:1.69'
     implementation 'com.squareup.okhttp3:okhttp:4.9.3'
 
