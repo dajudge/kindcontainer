@@ -59,6 +59,11 @@ public class ApplyFluent<P, C> {
         return fileFromClasspath(resourceName, (k8s, bytes) -> transform.apply(bytes));
     }
 
+    public ApplyFluent<P, C> from(final String location) {
+        files.add(location);
+        return this;
+    }
+
     private byte[] resourceToByteArray(final String resourceName) {
         final List<ClassLoader> classloaders = asList(
                 ApplyFluent.class.getClassLoader(),
