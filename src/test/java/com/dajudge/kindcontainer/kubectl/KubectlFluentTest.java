@@ -1,5 +1,9 @@
-package com.dajudge.kindcontainer;
+package com.dajudge.kindcontainer.kubectl;
 
+import com.dajudge.kindcontainer.ApiServerContainer;
+import com.dajudge.kindcontainer.K3sContainer;
+import com.dajudge.kindcontainer.KindContainer;
+import com.dajudge.kindcontainer.KubernetesContainer;
 import com.dajudge.kindcontainer.exception.ExecutionException;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
@@ -25,18 +29,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
-@RunWith(Parameterized.class)
-public class KubectlTest {
-    @Parameterized.Parameters
-    public static Collection<Supplier<KubernetesContainer<?>>> apiServers() {
-        return Arrays.asList(ApiServerContainer::new, K3sContainer::new, KindContainer::new);
-    }
-
-    protected final Supplier<KubernetesContainer<?>> k8sFactory;
-
-    public KubectlTest(final Supplier<KubernetesContainer<?>> k8sFactory) {
-        this.k8sFactory = k8sFactory;
-    }
+public class KubectlFluentTest {
 
     @Test
     public void multiple_invocations_work() {
@@ -105,7 +98,7 @@ public class KubectlTest {
             final Function<KubernetesContainer<?>, KubernetesContainer<?>> config,
             final Consumer<KubernetesContainer<?>> consumer
     ) {
-        try (final KubernetesContainer<?> k8s = config.apply(k8sFactory.get())) {
+        try (final KubernetesContainer<?> k8s = config.apply(new ApiServerContainer<>())) {
             k8s.start();
             consumer.accept(k8s);
         }
