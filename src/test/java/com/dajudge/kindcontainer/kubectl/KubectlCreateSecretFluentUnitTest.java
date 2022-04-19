@@ -11,7 +11,7 @@ import static org.mockito.Mockito.*;
 
 public class KubectlCreateSecretFluentUnitTest {
     private final BaseSidecarContainer.ExecInContainer exec = mock(BaseSidecarContainer.ExecInContainer.class);
-    private final CreateSecretDockerRegistryFluent<?> underTest = new CreateSecretDockerRegistryFluent<>(exec);
+    private final CreateSecretDockerRegistryFluent<?> underTest = new CreateSecretDockerRegistryFluent<>(exec, null);
 
     @Test
     public void masksPassword() throws IOException, ExecutionException, InterruptedException {
