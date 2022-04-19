@@ -46,6 +46,7 @@ public class CreateSecretDockerRegistryFluent<T> {
 
     public void run(final String name) throws IOException, ExecutionException, InterruptedException {
         try {
+            final List<String> maskStrings = new ArrayList<>();
             final List<String> cmdline = new ArrayList<>();
             cmdline.add("kubectl");
             cmdline.add("create");
@@ -58,6 +59,7 @@ public class CreateSecretDockerRegistryFluent<T> {
             if (dockerPassword != null) {
                 cmdline.add("--docker-password");
                 cmdline.add(dockerPassword);
+                maskStrings.add(dockerPassword);
             }
             if (dockerServer != null) {
                 cmdline.add("--docker-server");
@@ -72,7 +74,7 @@ public class CreateSecretDockerRegistryFluent<T> {
                 cmdline.add(namespace);
             }
             cmdline.add(name);
-            exec.safeExecInContainer(cmdline.toArray(new String[]{}));
+            exec.safeExecInContainer(maskStrings, cmdline.toArray(new String[]{}));
         } finally {
             resetFluent();
         }
