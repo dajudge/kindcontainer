@@ -1,0 +1,13 @@
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    assignees:
+      - "dajudge"
+    reviewers:
+      - "dajudge"
+    labels:
+      - "yak shaving"
+    open-pull-requests-limit: 10
