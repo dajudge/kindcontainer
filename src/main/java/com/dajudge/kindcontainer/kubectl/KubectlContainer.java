@@ -28,7 +28,13 @@ public class KubectlContainer<T extends KubectlContainer<T, C>, C> extends BaseS
                 this::safeExecInContainer,
                 this
         );
-        wait = new WaitFluent<>(this::safeExecInContainer);
-        create = new CreateFluent<>(this::safeExecInContainer);
+        wait = new WaitFluent<>(
+                this::safeExecInContainer,
+                this
+        );
+        create = new CreateFluent<>(
+                this::safeExecInContainer,
+                this
+        );
     }
 }

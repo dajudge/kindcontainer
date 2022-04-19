@@ -11,12 +11,14 @@ import static java.util.Arrays.asList;
 
 public class WaitFluent<P> {
     private final BaseSidecarContainer.ExecInContainer exec;
+    private final P parent;
     private final List<String> conditions = new ArrayList<>();
     private String namespace;
     private String timeout;
 
-    public WaitFluent(final BaseSidecarContainer.ExecInContainer exec) {
+    public WaitFluent(final BaseSidecarContainer.ExecInContainer exec, final P parent) {
         this.exec = exec;
+        this.parent = parent;
     }
 
     public WaitFluent<P> namespace(final String namespace) {
@@ -34,7 +36,7 @@ public class WaitFluent<P> {
         return this;
     }
 
-    public void run(final String kind, final String name) throws IOException, ExecutionException, InterruptedException {
+    public P run(final String kind, final String name) throws IOException, ExecutionException, InterruptedException {
         try {
             final List<String> cmdline = new ArrayList<>(asList("kubectl", "wait"));
             conditions.forEach(c -> {
@@ -55,6 +57,7 @@ public class WaitFluent<P> {
         } finally {
             resetFluent();
         }
+        return parent;
     }
 
     private void resetFluent() {
