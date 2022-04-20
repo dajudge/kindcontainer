@@ -9,5 +9,5 @@ updates:
     reviewers:
       - "dajudge"
     labels:
-      - "yak shaving"
+      - "type/dependency"
     open-pull-requests-limit: 10
