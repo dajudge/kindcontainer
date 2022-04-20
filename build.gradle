@@ -24,7 +24,7 @@ apply from: "${rootProject.projectDir}/signing.gradle"
 
 dependencies {
     api 'org.testcontainers:testcontainers:1.17.1'
-    implementation 'org.bouncycastle:bcpkix-jdk15on:1.69'
+    implementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
     implementation 'com.squareup.okhttp3:okhttp:4.9.3'
 
     testImplementation 'io.fabric8:kubernetes-client:5.12.1'
