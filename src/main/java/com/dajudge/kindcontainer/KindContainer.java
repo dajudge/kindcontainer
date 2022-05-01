@@ -45,7 +45,7 @@ import static java.util.stream.Collectors.toList;
  *
  * @param <T> SELF
  */
-public class KindContainer<T extends KindContainer<T>> extends KubernetesContainer<T> {
+public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKubeletContainer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(KindContainer.class);
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
@@ -66,6 +66,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
     private String serviceSubnet = "10.245.0.0/16";
     private List<Transferable> certs = new ArrayList<>();
     private Duration startupTimeout = Duration.ofSeconds(300);
+    private int minNodePort = 30000;
+    private int maxNodePort = 32767;
 
     /**
      * Constructs a new <code>KindContainer</code> with the latest supported Kubernetes version.
@@ -200,6 +202,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
             put(".ServiceSubnet", serviceSubnet);
             put(".CertSANs", subjectAlternativeNames.stream().map(san -> "\"" + san + "\"").collect(joining(",")));
             put(".KubernetesVersion", version.descriptor.getKubernetesVersion());
+            put(".MinNodePort", String.valueOf(minNodePort));
+            put(".MaxNodePort", String.valueOf(maxNodePort));
         }};
         exec("mkdir", "-p", CONTAINTER_WORKDIR);
         return params;
@@ -382,6 +386,13 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesContain
      */
     public T withServiceSubnet(final String cidr) {
         serviceSubnet = cidr;
+        return self();
+    }
+
+    @Override
+    public T withNodePortRange(final int minPort, final int maxPort) {
+        this.minNodePort = minPort;
+        this.maxNodePort = maxPort;
         return self();
     }
 

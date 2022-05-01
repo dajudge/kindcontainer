@@ -12,11 +12,11 @@ import static java.util.Arrays.asList;
 @RunWith(Parameterized.class)
 public abstract class BaseFullContainersTest {
     @Parameterized.Parameters
-    public static Collection<KubernetesContainer<?>> containers() {
+    public static Collection<KubernetesWithKubeletContainer<?>> containers() {
         return asList(new K3sContainer<>(), new KindContainer<>());
     }
 
-    protected final KubernetesContainer<?> k8s;
+    protected final KubernetesWithKubeletContainer<?> k8s;
 
     @Before
     public void beforeFullContainers() {
@@ -28,7 +28,7 @@ public abstract class BaseFullContainersTest {
         k8s.stop();
     }
 
-    protected BaseFullContainersTest(final KubernetesContainer<?> k8s) {
+    protected BaseFullContainersTest(final KubernetesWithKubeletContainer<?> k8s) {
         this.k8s = k8s;
     }
 }

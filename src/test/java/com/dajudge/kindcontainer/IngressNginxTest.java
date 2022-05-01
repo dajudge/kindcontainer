@@ -14,7 +14,7 @@ import static org.junit.Assert.assertTrue;
 @RunWith(Parameterized.class)
 public class IngressNginxTest extends BaseFullContainersTest {
 
-    public IngressNginxTest(final KubernetesContainer<?> k8s) {
+    public IngressNginxTest(final KubernetesWithKubeletContainer<?> k8s) {
         super(k8s.withHelm3(helm -> {
                     helm.repo.add.run("ingress-nginx", "https://kubernetes.github.io/ingress-nginx");
                     helm.repo.update.run();

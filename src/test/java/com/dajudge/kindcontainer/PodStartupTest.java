@@ -9,7 +9,7 @@ import static java.time.Duration.ofSeconds;
 import static org.awaitility.Awaitility.await;
 
 public class PodStartupTest extends BaseFullContainersTest {
-    public PodStartupTest(final KubernetesContainer<?> k8s) {
+    public PodStartupTest(final KubernetesWithKubeletContainer<?> k8s) {
         super(k8s);
     }
 

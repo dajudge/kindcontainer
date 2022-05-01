@@ -14,7 +14,7 @@ import static java.time.Duration.ofSeconds;
 import static org.awaitility.Awaitility.await;
 
 public class NodePortTest extends BaseFullContainersTest {
-    public NodePortTest(final KubernetesContainer<?> k8s) {
+    public NodePortTest(final KubernetesWithKubeletContainer<?> k8s) {
         super(k8s.withExposedPorts(30000));
     }
 

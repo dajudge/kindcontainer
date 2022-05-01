@@ -15,7 +15,7 @@ public class PersistentVolumeTest extends BaseFullContainersTest {
 
     private String namespace;
 
-    public PersistentVolumeTest(final KubernetesContainer<?> k8s) {
+    public PersistentVolumeTest(final KubernetesWithKubeletContainer<?> k8s) {
         super(k8s);
     }
 

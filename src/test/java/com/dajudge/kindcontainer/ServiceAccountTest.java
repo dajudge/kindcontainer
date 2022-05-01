@@ -16,7 +16,7 @@ import static org.junit.Assert.fail;
 
 public class ServiceAccountTest extends BaseFullContainersTest {
 
-    public ServiceAccountTest(final KubernetesContainer<?> k8s) {
+    public ServiceAccountTest(final KubernetesWithKubeletContainer<?> k8s) {
         super(k8s.withKubectl(kubectl -> kubectl.apply
                 .fileFromClasspath("manifests/serviceaccount1.yaml")
                 .run()));
