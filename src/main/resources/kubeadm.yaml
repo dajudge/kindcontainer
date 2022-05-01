@@ -2,6 +2,7 @@ apiServer:
   certSANs: [{{ .CertSANs }}]
   extraArgs:
     runtime-config: ""
+    service-node-port-range: {{ .MinNodePort }}-{{ .MaxNodePort }}
 apiVersion: kubeadm.k8s.io/v1beta2
 clusterName: kind
 controlPlaneEndpoint: {{ .NodeIp }}:6443

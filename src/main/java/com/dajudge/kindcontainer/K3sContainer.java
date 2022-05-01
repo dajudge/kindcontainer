@@ -44,13 +44,15 @@ import static com.github.dockerjava.api.model.DockerObjectAccessor.overrideRawVa
 import static java.lang.String.format;
 import static java.util.stream.Collectors.toList;
 
-public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesContainer<SELF> {
+public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWithKubeletContainer<SELF> {
     private static final Logger LOG = LoggerFactory.getLogger(K3sContainer.class);
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final HashMap<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
         put("/run", "");
         put("/var/run", "");
     }};
+    private int minNodePort = 30000;
+    private int maxNodePort = 32767;
 
     public K3sContainer() {
         this(Version.getLatest());
@@ -71,12 +73,25 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesCon
                 .withPrivilegedMode(true)
                 .withCreateContainerCmdModifier(it -> overrideRawValue(it.getHostConfig(), "CgroupnsMode", "host"))
                 .withFileSystemBind("/sys/fs/cgroup", "/sys/fs/cgroup", BindMode.READ_WRITE)
-                .withTmpFs(TMP_FILESYSTEMS)
-                .withCommand(
-                        "server",
-                        "--no-deploy=traefik",
-                        "--tls-san=" + this.getHost()
-                );
+                .withTmpFs(TMP_FILESYSTEMS);
+    }
+
+    @Override
+    public void start() {
+        this.withCommand(
+                "server",
+                "--no-deploy=traefik",
+                "--tls-san=" + this.getHost(),
+                String.format("--service-node-port-range=%d-%d", minNodePort, maxNodePort)
+        );
+        super.start();
+    }
+
+    @Override
+    public SELF withNodePortRange(int minPort, int maxPort) {
+        this.minNodePort = minPort;
+        this.maxNodePort = maxPort;
+        return self();
     }
 
     @Override
