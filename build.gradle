@@ -30,7 +30,7 @@ dependencies {
     testImplementation 'io.fabric8:kubernetes-client:5.12.2'
     testImplementation 'junit:junit:4.13.2'
     testImplementation 'org.awaitility:awaitility:4.2.0'
-    testImplementation 'org.mockito:mockito-core:4.6.0'
+    testImplementation 'org.mockito:mockito-core:4.6.1'
 
     testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.11'
 }
