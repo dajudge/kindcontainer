@@ -403,7 +403,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
         VERSION_1_21_2(new KubernetesVersionDescriptor(1, 21, 2)),
         VERSION_1_22_4(new KubernetesVersionDescriptor(1, 22, 4)),
         VERSION_1_22_5(new KubernetesVersionDescriptor(1, 22, 5)),
-        VERSION_1_23_3(new KubernetesVersionDescriptor(1, 23, 3));
+        VERSION_1_23_3(new KubernetesVersionDescriptor(1, 23, 3)),
+        VERSION_1_24_1(new KubernetesVersionDescriptor(1, 24, 1));
 
         private static final Comparator<Version> COMPARE_ASCENDING = comparing(a -> a.descriptor);
         private static final Comparator<Version> COMPARE_DESCENDING = COMPARE_ASCENDING.reversed();
