@@ -2,23 +2,17 @@ package com.dajudge.kindcontainer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.Network;
-import org.testcontainers.images.builder.Transferable;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.HashMap;
 import java.util.function.Supplier;
 
 import static java.lang.System.currentTimeMillis;
 import static java.lang.Thread.sleep;
-import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.util.Arrays.asList;
 
 public final class Utils {
     private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
@@ -74,26 +68,12 @@ public final class Utils {
         throw error.get();
     }
 
-    public static String indent(final String prefix, final String string) {
-        return string.replaceAll("(?m)^", prefix);
-    }
-
     static String resolve(final String hostname) {
         try {
             return InetAddress.getByName(hostname).getHostAddress();
         } catch (final UnknownHostException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    static Network.NetworkImpl createNetwork() {
-        return Network.builder()
-                .createNetworkCmdModifiers(asList(cmd -> {
-                    cmd.withOptions(new HashMap<String, String>() {{
-                        put("com.docker.network.driver.mtu", "1400");
-                    }});
-                }))
-                .build();
     }
 
     static String prefixLines(final String strings, final String prefix) {
