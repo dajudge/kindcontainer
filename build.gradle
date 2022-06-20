@@ -21,6 +21,7 @@ println "Build version $version"
 
 apply from: "${rootProject.projectDir}/publishing.gradle"
 apply from: "${rootProject.projectDir}/signing.gradle"
+apply from: "${rootProject.projectDir}/codegen.gradle"
 
 ext {
     testcontainersVersion = "1.17.3"

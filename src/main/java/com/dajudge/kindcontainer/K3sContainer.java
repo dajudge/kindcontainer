@@ -27,25 +27,17 @@ package com.dajudge.kindcontainer;
  */
 
 import com.github.dockerjava.api.command.InspectContainerResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
-import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.utility.DockerImageName;
 
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.List;
-import java.util.stream.Stream;
 
+import static com.dajudge.kindcontainer.KubernetesVersionEnum.latest;
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.replaceServerInKubeconfig;
 import static com.github.dockerjava.api.model.DockerObjectAccessor.overrideRawValue;
-import static java.lang.String.format;
-import static java.util.stream.Collectors.toList;
 
 public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWithKubeletContainer<SELF> {
-    private static final Logger LOG = LoggerFactory.getLogger(K3sContainer.class);
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final HashMap<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
         put("/run", "");
@@ -55,15 +47,11 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
     private int maxNodePort = 32767;
 
     public K3sContainer() {
-        this(Version.getLatest());
+        this(latest(K3sContainerVersion.class));
     }
 
-    public K3sContainer(final Version version) {
-        this(DockerImageName.parse(String.format(
-                "rancher/k3s:%s-k3s%d",
-                version.descriptor.getKubernetesVersion(),
-                version.k3sVersion
-        )));
+    public K3sContainer(final K3sContainerVersion version) {
+        this(DockerImageName.parse(String.format("rancher/k3s:%s-k3s1", version.descriptor().getKubernetesVersion())));
     }
 
     public K3sContainer(final DockerImageName dockerImageName) {
@@ -113,67 +101,5 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
 
     private String getOriginalKubeconfig() {
         return copyFileFromContainer("/etc/rancher/k3s/k3s.yaml", Utils::readString);
-    }
-
-
-    /**
-     * The available k3s versions.
-     */
-    public enum Version {
-        VERSION_1_21_9_K3S1(new KubernetesVersionDescriptor(1, 21, 9), 1),
-        VERSION_1_22_6_K3S1(new KubernetesVersionDescriptor(1, 22, 6), 1),
-        VERSION_1_23_3_K3S1(new KubernetesVersionDescriptor(1, 23, 3), 1);
-
-        private static final Comparator<Version> COMPARE_ASCENDING = comparator();
-        private static final Comparator<Version> COMPARE_DESCENDING = COMPARE_ASCENDING.reversed();
-        @VisibleForTesting
-        final KubernetesVersionDescriptor descriptor;
-
-        final int k3sVersion;
-
-        Version(final KubernetesVersionDescriptor descriptor, final int k3sVersion) {
-            this.descriptor = descriptor;
-            this.k3sVersion = k3sVersion;
-        }
-
-        /**
-         * Returns the latest supported version.
-         *
-         * @return the latest supported version.
-         */
-        public static Version getLatest() {
-            return descending().get(0);
-        }
-
-        /**
-         * Returns the list of available versions in descending order (latest is first).
-         *
-         * @return the list of available versions in descending order (latest is first).
-         */
-        public static List<Version> descending() {
-            return Stream.of(Version.values())
-                    .sorted(COMPARE_DESCENDING)
-                    .collect(toList());
-        }
-
-        public KubernetesVersionDescriptor getDescriptor() {
-            return descriptor;
-        }
-
-        @Override
-        public String toString() {
-            return format(
-                    "%d.%d.%d-k3s%d",
-                    descriptor.getMajor(),
-                    descriptor.getMinor(),
-                    descriptor.getPatch(),
-                    k3sVersion
-            );
-        }
-
-        private static Comparator<Version> comparator() {
-            return Comparator.<Version, KubernetesVersionDescriptor>comparing(a -> a.descriptor)
-                    .thenComparingInt(it -> it.k3sVersion);
-        }
     }
 }
