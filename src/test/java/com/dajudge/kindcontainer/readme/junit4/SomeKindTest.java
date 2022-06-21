@@ -1,6 +1,6 @@
-package com.dajudge.kindcontainer.readme;
+package com.dajudge.kindcontainer.readme.junit4;
 
-import com.dajudge.kindcontainer.K3sContainer;
+import com.dajudge.kindcontainer.KindContainer;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
 import org.junit.ClassRule;
@@ -9,14 +9,14 @@ import org.junit.Test;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static org.junit.Assert.assertEquals;
 
-public class SomeK3sTest {
+public class SomeKindTest {
     @ClassRule
-    public static final K3sContainer<?> K3S = new K3sContainer<>();
+    public static final KindContainer<?> KUBE = new KindContainer<>();
 
     @Test
     public void verify_node_is_present() {
         // Create a fabric8 client and use it!
-        try(final KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(K3S.getKubeconfig()))) {
+        try(final KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(KUBE.getKubeconfig()))) {
             assertEquals(1, client.nodes().list().getItems().size());
         }
     }

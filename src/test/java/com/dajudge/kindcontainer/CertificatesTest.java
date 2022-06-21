@@ -1,15 +1,18 @@
 package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.util.TestUtils;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.MountableFile;
 
 import static com.dajudge.kindcontainer.util.TestUtils.stringResource;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Testcontainers
 public class CertificatesTest {
-    @Rule
+    @Container
     public final KindContainer<?> k8s = new KindContainer<>()
             .withCaCert(MountableFile.forClasspathResource("test.crt"));
 

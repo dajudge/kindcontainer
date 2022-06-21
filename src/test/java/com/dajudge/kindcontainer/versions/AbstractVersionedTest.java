@@ -2,32 +2,53 @@ package com.dajudge.kindcontainer.versions;
 
 import com.dajudge.kindcontainer.KubernetesContainer;
 import com.dajudge.kindcontainer.KubernetesVersionDescriptor;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.util.TestUtils.runWithClient;
-import static org.junit.Assert.assertEquals;
+import static java.lang.String.format;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@RunWith(Parameterized.class)
 public abstract class AbstractVersionedTest {
 
-    protected final Supplier<KubernetesContainer<?>> k8sFactory;
-    protected final KubernetesVersionDescriptor version;
+    protected static final class KubernetesTestPackage<T extends KubernetesContainer<?>> {
+        private final String containerClassName;
+        private final Supplier<T> factory;
+        private final KubernetesVersionDescriptor version;
 
-    protected AbstractVersionedTest(
-            final Supplier<KubernetesContainer<?>> k8sFactory,
-            final KubernetesVersionDescriptor version
-    ) {
-        this.k8sFactory = k8sFactory;
-        this.version = version;
+        public KubernetesTestPackage(
+                final String containerClassName,
+                final Supplier<T> factory,
+                final KubernetesVersionDescriptor version
+        ) {
+            this.containerClassName = containerClassName;
+            this.factory = factory;
+            this.version = version;
+        }
     }
 
-    @Test
-    public void can_start() {
-        final KubernetesContainer<?> k8s = k8sFactory.get();
+    protected abstract Stream<KubernetesTestPackage<?>> testPackages();
+
+    @TestFactory
+    public Stream<DynamicTest> can_start() {
+        return testPackages().map(pkg -> {
+            final Supplier<? extends KubernetesContainer<?>> factory = pkg.factory;
+            final KubernetesVersionDescriptor version = pkg.version;
+            final String name = format("%s %s", pkg.containerClassName, version.getKubernetesVersion());
+            return DynamicTest.dynamicTest(name, () -> {
+                assertStartsCorrectVersion(factory, version);
+            });
+        });
+    }
+
+    private void assertStartsCorrectVersion(
+            final Supplier<? extends KubernetesContainer<?>> factory,
+            final KubernetesVersionDescriptor version
+    ) {
+        final KubernetesContainer<?> k8s = factory.get();
         try {
             k8s.start();
             runWithClient(k8s, client -> {

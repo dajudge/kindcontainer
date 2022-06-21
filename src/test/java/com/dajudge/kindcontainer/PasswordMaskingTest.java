@@ -2,9 +2,9 @@ package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.exception.ExecutionException;
 import com.dajudge.kindcontainer.helm.KubeConfigSupplier;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.testcontainers.utility.DockerImageName;
 
@@ -14,7 +14,7 @@ import static java.util.Collections.singletonList;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-public class BaseSidecarContainerTest {
+public class PasswordMaskingTest {
     private final Logger logger = mock(Logger.class);
 
     private static class TestSidecarContainer extends BaseSidecarContainer<TestSidecarContainer> {
@@ -33,12 +33,12 @@ public class BaseSidecarContainerTest {
             () -> "kubeconfig"
     );
 
-    @Before
+    @BeforeEach
     public void start() {
         container.start();
     }
 
-    @After
+    @AfterEach
     public void stop() {
         container.stop();
     }

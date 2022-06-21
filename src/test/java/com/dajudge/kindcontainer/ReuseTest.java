@@ -1,44 +1,28 @@
 package com.dajudge.kindcontainer;
 
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.function.Supplier;
 
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.REUSABLE_CONTAINERS;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
-@RunWith(Parameterized.class)
 public class ReuseTest {
-    @Parameterized.Parameters
-    public static Collection<Supplier<KubernetesContainer<?>>> apiServers() {
-        return Arrays.asList(
-                // TODO ApiServerContainer::new,
-                KindContainer::new,
-                K3sContainer::new
-        );
-    }
 
-    protected final Supplier<KubernetesContainer<?>> k8sFactory;
-
-    public ReuseTest(final Supplier<KubernetesContainer<?>> k8sFactory) {
-        this.k8sFactory = k8sFactory;
-    }
-
-    @Test
-    public void does_not_reapply_postAvailabilityExecutions() {
-        try (final KubernetesContainer<?> orig = applyConfig(k8sFactory.get())) {
+    @ParameterizedTest
+    @MethodSource(REUSABLE_CONTAINERS)
+    public void does_not_reapply_postAvailabilityExecutions(final Supplier<KubernetesContainer<?>> factory) {
+        try (final KubernetesContainer<?> orig = applyConfig(factory.get())) {
             orig.start();
             try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(orig.getKubeconfig()))) {
                 assertNotNull(client.serviceAccounts().inNamespace("my-namespace").withName("my-service-account").get());
                 client.serviceAccounts().inNamespace("my-namespace").withName("my-service-account").delete();
             }
-            final KubernetesContainer<?> copy = applyConfig(k8sFactory.get());
+            final KubernetesContainer<?> copy = applyConfig(factory.get());
             copy.start();
             try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(copy.getKubeconfig()))) {
                 assertNotNull(client.namespaces().withName("my-namespace").get());

@@ -2,27 +2,26 @@ package com.dajudge.kindcontainer.kubectl;
 
 import com.dajudge.kindcontainer.ApiServerContainer;
 import io.fabric8.kubernetes.api.model.Namespace;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.util.HashMap;
-import java.util.Map;
 
 import static com.dajudge.kindcontainer.util.TestUtils.runWithClient;
-import static org.junit.Assert.*;
-;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@Testcontainers
 public class KubectlLabelFluentTest {
-    @Rule
+    @Container
     public final ApiServerContainer<?> k8s = new ApiServerContainer<>()
-            .withKubectl(kubectl -> {
-                kubectl.label
-                        .with("label1", "value1")
-                        .with(new HashMap<String, String>() {{
-                            put("label2", "value2");
-                        }})
-                        .run("namespace", "default");
-            });
+            .withKubectl(kubectl -> kubectl.label
+                    .with("label1", "value1")
+                    .with(new HashMap<String, String>() {{
+                        put("label2", "value2");
+                    }})
+                    .run("namespace", "default"));
 
     @Test
     public void creates_docker_secret() {

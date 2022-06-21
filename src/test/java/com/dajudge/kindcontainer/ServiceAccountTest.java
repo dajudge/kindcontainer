@@ -3,27 +3,25 @@ package com.dajudge.kindcontainer;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import org.junit.ClassRule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.function.Supplier;
 
-import static org.junit.Assert.fail;
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.CONTAINERS_WITH_KUBELET;
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.runWithK8s;
+import static org.junit.jupiter.api.Assertions.fail;
 
-public class ServiceAccountTest extends BaseFullContainersTest {
+public class ServiceAccountTest {
 
-    public ServiceAccountTest(final KubernetesWithKubeletContainer<?> k8s) {
-        super(k8s.withKubectl(kubectl -> kubectl.apply
-                .fileFromClasspath("manifests/serviceaccount1.yaml")
-                .run()));
-        }
+    @ParameterizedTest
+    @MethodSource(CONTAINERS_WITH_KUBELET)
+    public void creates_client_for_service_account(final Supplier<KubernetesWithKubeletContainer<?>> factory) {
+        runWithK8s(createContainer(factory), this::assertCreatesClientForServiceAccount);
+    }
 
-    @Test
-    public void creates_client_for_service_account() {
+    private void assertCreatesClientForServiceAccount(KubernetesWithKubeletContainer<?> k8s) {
         // First do a sanity check w/ admin privileges
         final String kubeconfig1 = k8s.getKubeconfig();
         try (final DefaultKubernetesClient client = new DefaultKubernetesClient(Config.fromKubeconfig(kubeconfig1))) {
@@ -42,5 +40,13 @@ public class ServiceAccountTest extends BaseFullContainersTest {
                 // expected
             }
         }
+    }
+
+    private static KubernetesWithKubeletContainer<?> createContainer(
+            final Supplier<KubernetesWithKubeletContainer<?>> factory
+    ) {
+        return factory.get().withKubectl(kubectl -> kubectl.apply
+                .fileFromClasspath("manifests/serviceaccount1.yaml")
+                .run());
     }
 }

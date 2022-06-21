@@ -22,17 +22,26 @@ println "Build version $version"
 apply from: "${rootProject.projectDir}/publishing.gradle"
 apply from: "${rootProject.projectDir}/signing.gradle"
 
+ext {
+    testcontainersVersion = "1.17.2"
+    junitVersion = "5.8.1"
+}
+
 dependencies {
-    api 'org.testcontainers:testcontainers:1.17.2'
-    implementation 'org.bouncycastle:bcpkix-jdk15on:1.70'
-    implementation 'com.squareup.okhttp3:okhttp:4.9.3'
+    api "org.testcontainers:testcontainers:$testcontainersVersion"
+    implementation "org.bouncycastle:bcpkix-jdk15on:1.70"
+    implementation "com.squareup.okhttp3:okhttp:4.9.3"
 
-    testImplementation 'io.fabric8:kubernetes-client:5.12.2'
-    testImplementation 'junit:junit:4.13.2'
-    testImplementation 'org.awaitility:awaitility:4.2.0'
-    testImplementation 'org.mockito:mockito-core:4.6.1'
+    testImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
+    testImplementation "io.fabric8:kubernetes-client:5.12.2"
+    testImplementation "org.awaitility:awaitility:4.2.0"
+    testImplementation "org.mockito:mockito-core:4.6.1"
+    testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
+    testImplementation "org.junit.jupiter:junit-jupiter-params:$junitVersion"
 
-    testRuntimeOnly 'ch.qos.logback:logback-classic:1.2.11'
+    testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
+    testRuntimeOnly "org.junit.vintage:junit-vintage-engine:$junitVersion"
+    testRuntimeOnly "ch.qos.logback:logback-classic:1.2.11"
 }
 
 java {
@@ -46,6 +55,8 @@ test {
     systemProperty "kubernetes.disable.autoConfig", "true"
 
     environment 'TESTCONTAINERS_REUSE_ENABLE', 'true'
+
+    useJUnitPlatform()
 
     testLogging {
         showStandardStreams = true
