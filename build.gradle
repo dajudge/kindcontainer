@@ -24,7 +24,7 @@ apply from: "${rootProject.projectDir}/signing.gradle"
 
 ext {
     testcontainersVersion = "1.17.2"
-    junitVersion = "5.8.1"
+    junitVersion = "5.8.2"
 }
 
 dependencies {
