@@ -1,21 +1,17 @@
 package com.dajudge.kindcontainer.versions;
 
 import com.dajudge.kindcontainer.ApiServerContainer;
-import org.junit.runners.Parameterized;
 
-import java.util.Collection;
+import java.util.stream.Stream;
 
 public class ApiServerVersionTest extends AbstractVersionedTest {
-    @Parameterized.Parameters
-    public static Collection<ApiServerContainer.Version> apiServers() {
-        return ApiServerContainer.Version.descending();
-    }
-
-    public ApiServerVersionTest(final ApiServerContainer.Version version) {
-        super(() -> createApiServerContainer(version), version.getDescriptor());
-    }
-
-    private static ApiServerContainer<?> createApiServerContainer(final ApiServerContainer.Version version) {
-        return new ApiServerContainer<>(version);
+    @Override
+    protected Stream<KubernetesTestPackage<?>> testPackages() {
+        return ApiServerContainer.Version.descending().stream()
+                .map(version -> new KubernetesTestPackage<ApiServerContainer<?>>(
+                        ApiServerContainer.class.getSimpleName(),
+                        () -> new ApiServerContainer<>(version),
+                        version.getDescriptor()
+                ));
     }
 }

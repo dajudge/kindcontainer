@@ -5,22 +5,19 @@ import com.dajudge.kindcontainer.KubernetesContainer;
 import com.dajudge.kindcontainer.exception.ExecutionException;
 import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import org.junit.Test;
-import org.testcontainers.utility.MountableFile;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static com.dajudge.kindcontainer.util.TestUtils.runWithClient;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 import static org.testcontainers.utility.MountableFile.forClasspathResource;
 
@@ -64,9 +61,7 @@ public class KubectlApplyFluentTest {
         withK8s(k8s -> k8s.withKubectl(kubectl -> {
             kubectl.copyFileToContainer(forClasspathResource("manifests/serviceaccount1.yaml"), "/tmp/sa.yaml");
             kubectl.apply.from("/tmp/sa.yaml").run();
-        }), (k8s, client) -> {
-            assertTrue(serviceAccountExists(client));
-        });
+        }), (k8s, client) -> assertTrue(serviceAccountExists(client)));
     }
 
     @Test

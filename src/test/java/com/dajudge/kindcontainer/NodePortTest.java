@@ -5,21 +5,27 @@ import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePortBuilder;
-import org.junit.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.HashMap;
+import java.util.function.Supplier;
 
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.CONTAINERS_WITH_KUBELET;
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.runWithK8s;
 import static com.dajudge.kindcontainer.util.TestUtils.*;
 import static java.time.Duration.ofSeconds;
 import static org.awaitility.Awaitility.await;
 
-public class NodePortTest extends BaseFullContainersTest {
-    public NodePortTest(final KubernetesWithKubeletContainer<?> k8s) {
-        super(k8s.withExposedPorts(30000));
+public class NodePortTest {
+
+    @ParameterizedTest
+    @MethodSource(CONTAINERS_WITH_KUBELET)
+    public void exposes_node_port(final Supplier<KubernetesWithKubeletContainer<?>> factory) {
+        runWithK8s(factory.get().withExposedPorts(30000), this::assertExposesNodePort);
     }
 
-    @Test
-    public void exposes_node_port() {
+    private void assertExposesNodePort(KubernetesWithKubeletContainer<?> k8s) {
         final Pod pod = runWithClient(k8s, client -> {
             return createSimplePod(client, createNewNamespace(client));
         });

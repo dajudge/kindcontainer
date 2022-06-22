@@ -8,8 +8,9 @@ import com.dajudge.kindcontainer.client.model.base.Metadata;
 import com.dajudge.kindcontainer.client.model.base.ResourceAction;
 import com.dajudge.kindcontainer.client.model.v1.Namespace;
 import com.dajudge.kindcontainer.client.model.v1.ServiceAccount;
-import org.junit.ClassRule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 import java.util.*;
@@ -19,10 +20,11 @@ import static java.util.Collections.*;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
+@Testcontainers
 public class TinyK8sClientTest {
-    @ClassRule
+    @Container
     public static final ApiServerContainer<?> K8S = new ApiServerContainer<>();
 
     private final TinyK8sClient client = TinyK8sClient.fromKubeconfig(K8S.getKubeconfig());
@@ -31,7 +33,7 @@ public class TinyK8sClientTest {
     public void can_list_namespaces() {
         final List<Namespace> namespaces = client.v1().namespaces().list().getItems();
         final List<String> names = namespaces.stream().map(it -> it.getMetadata().getName()).collect(toList());
-        assertTrue(names.toString(), names.contains("kube-system"));
+        assertTrue(names.contains("kube-system"), names.toString());
     }
 
     @Test
@@ -39,7 +41,7 @@ public class TinyK8sClientTest {
         final Namespace namespace = createNamespace(client);
         final List<Namespace> namespaces = client.v1().namespaces().list().getItems();
         final List<String> names = namespaces.stream().map(it -> it.getMetadata().getName()).collect(toList());
-        assertTrue(names.toString(), names.contains(namespace.getMetadata().getName()));
+        assertTrue(names.contains(namespace.getMetadata().getName()), names.toString());
     }
 
     @Test

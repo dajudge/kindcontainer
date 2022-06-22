@@ -8,6 +8,7 @@ import com.dajudge.kindcontainer.client.http.TinyHttpClient;
 import io.fabric8.kubernetes.api.model.*;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import org.testcontainers.shaded.com.google.common.io.Resources;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -104,7 +105,7 @@ public final class TestUtils {
         return new String(bos.toByteArray(), UTF_8);
     }
 
-    public static <O> O runWithClient(
+    public static <T extends KubernetesContainer<T>, O> O runWithClient(
             final KubernetesContainer<?> k8s,
             final ThrowingConsumer<DefaultKubernetesClient, Exception> consumer
     ) {
@@ -124,6 +125,14 @@ public final class TestUtils {
             } catch (final Exception e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    public static byte[] readResource(final String resourceName) {
+        try {
+            return Resources.toByteArray(Resources.getResource(resourceName));
+        } catch (final IOException e) {
+            throw new RuntimeException("Failed to load resource: " + resourceName, e);
         }
     }
 }

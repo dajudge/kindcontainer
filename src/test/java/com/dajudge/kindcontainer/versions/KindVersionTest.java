@@ -1,21 +1,17 @@
 package com.dajudge.kindcontainer.versions;
 
 import com.dajudge.kindcontainer.KindContainer;
-import org.junit.runners.Parameterized;
 
-import java.util.Collection;
+import java.util.stream.Stream;
 
 public class KindVersionTest extends AbstractVersionedTest {
-    @Parameterized.Parameters
-    public static Collection<KindContainer.Version> apiServers() {
-        return KindContainer.Version.descending();
-    }
-
-    public KindVersionTest(final KindContainer.Version version) {
-        super(() -> createKindContainer(version), version.getDescriptor());
-    }
-
-    private static KindContainer<?> createKindContainer(final KindContainer.Version version) {
-        return new KindContainer<>(version);
+    @Override
+    protected Stream<KubernetesTestPackage<?>> testPackages() {
+        return KindContainer.Version.descending().stream()
+                .map(version -> new KubernetesTestPackage<KindContainer<?>>(
+                        KindContainer.class.getSimpleName(),
+                        () -> new KindContainer<>(version),
+                        version.getDescriptor()
+                ));
     }
 }

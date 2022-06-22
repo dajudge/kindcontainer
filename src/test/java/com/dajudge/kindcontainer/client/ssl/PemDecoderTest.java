@@ -1,16 +1,16 @@
 package com.dajudge.kindcontainer.client.ssl;
 
-import org.junit.Test;
-import org.testcontainers.shaded.com.google.common.io.Resources;
+import com.dajudge.kindcontainer.util.TestUtils;
+import org.junit.jupiter.api.Test;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 
 import static com.dajudge.kindcontainer.client.ssl.SslUtil.parsePem;
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class PemDecoderTest {
-    private static final byte[] PEM = readResource("pem.txt");
+    private static final byte[] PEM = TestUtils.readResource("pem.txt");
 
     @Test
     public void can_parse_pem() throws IOException {
@@ -25,13 +25,5 @@ public class PemDecoderTest {
         return checksum;
     }
 
-
-    private static byte[] readResource(final String resourceName) {
-        try {
-            return Resources.toByteArray(Resources.getResource(resourceName));
-        } catch (final IOException e) {
-            throw new RuntimeException("Failed to load resource: " + resourceName, e);
-        }
-    }
 
 }

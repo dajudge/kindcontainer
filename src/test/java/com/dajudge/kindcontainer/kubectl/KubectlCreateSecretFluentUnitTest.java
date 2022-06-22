@@ -2,7 +2,7 @@ package com.dajudge.kindcontainer.kubectl;
 
 import com.dajudge.kindcontainer.BaseSidecarContainer;
 import com.dajudge.kindcontainer.exception.ExecutionException;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 

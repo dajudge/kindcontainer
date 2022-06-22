@@ -1,4 +1,4 @@
-package com.dajudge.kindcontainer.readme;
+package com.dajudge.kindcontainer.readme.junit4;
 
 import com.dajudge.kindcontainer.ApiServerContainer;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;

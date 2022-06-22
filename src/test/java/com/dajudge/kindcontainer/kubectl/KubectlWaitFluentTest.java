@@ -8,10 +8,11 @@ import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentConditionBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -22,23 +23,24 @@ import java.util.concurrent.atomic.AtomicReference;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Testcontainers
 public class KubectlWaitFluentTest {
-    @Rule
+    @Container
     public final ApiServerContainer<?> k8s = new ApiServerContainer<>();
 
     private final String namespace = UUID.randomUUID().toString();
     private NamespacedKubernetesClient client;
 
-    @Before
+    @BeforeEach
     public void before() {
         client = new DefaultKubernetesClient(fromKubeconfig(k8s.getKubeconfig())).inNamespace(namespace);
         client.namespaces().create(new NamespaceBuilder().withNewMetadata().withName(namespace).endMetadata().build());
     }
 
-    @After
+    @AfterEach
     public void after() {
         client.close();
     }

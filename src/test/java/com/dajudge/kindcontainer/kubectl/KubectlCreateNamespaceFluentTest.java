@@ -1,17 +1,19 @@
 package com.dajudge.kindcontainer.kubectl;
 
 import com.dajudge.kindcontainer.ApiServerContainer;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static com.dajudge.kindcontainer.util.TestUtils.runWithClient;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+@Testcontainers
 public class KubectlCreateNamespaceFluentTest {
-    @Rule
+    @Container
     public final ApiServerContainer<?> k8s = new ApiServerContainer<>()
             .withKubectl(kubectl -> {
-               kubectl.create.namespace.run("my-namespace");
+                kubectl.create.namespace.run("my-namespace");
             });
 
     @Test
