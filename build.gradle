@@ -30,7 +30,6 @@ ext {
 dependencies {
     api "org.testcontainers:testcontainers:$testcontainersVersion"
     implementation "org.bouncycastle:bcpkix-jdk15on:1.70"
-    implementation "com.squareup.okhttp3:okhttp:4.9.3"
 
     testImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
     testImplementation "io.fabric8:kubernetes-client:5.12.2"
