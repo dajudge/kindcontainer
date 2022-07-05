@@ -1,21 +1,30 @@
 package com.dajudge.kindcontainer;
 
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 
-import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.REUSABLE_CONTAINERS;
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.reusableContainers;
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 public class ReuseTest {
 
-    @ParameterizedTest
-    @MethodSource(REUSABLE_CONTAINERS)
-    public void does_not_reapply_postAvailabilityExecutions(final Supplier<KubernetesContainer<?>> factory) {
+    @TestFactory
+    public Stream<DynamicTest> does_not_reapply_postAvailabilityExecutions() {
+        return reusableContainers()
+                .map(factory -> dynamicTest(
+                        factory.toString(),
+                        () -> assertDoesNotReapplyPostAvailabilityExecutions(factory)
+                ));
+    }
+
+    private void assertDoesNotReapplyPostAvailabilityExecutions(final Supplier<KubernetesContainer<?>> factory) {
         try (final KubernetesContainer<?> orig = applyConfig(factory.get())) {
             orig.start();
             try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(orig.getKubeconfig()))) {

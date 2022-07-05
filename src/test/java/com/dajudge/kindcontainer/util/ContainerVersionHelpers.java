@@ -1,8 +1,10 @@
 package com.dajudge.kindcontainer.util;
 
 import com.dajudge.kindcontainer.*;
+import org.junit.jupiter.api.DynamicTest;
 import org.testcontainers.containers.GenericContainer;
 
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -10,6 +12,7 @@ import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.KubernetesVersionEnum.latest;
 import static java.lang.String.format;
+import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 
 public final class ContainerVersionHelpers {
     public static final String CONTAINERS_WITH_KUBELET = "com.dajudge.kindcontainer.util.ContainerVersionHelpers#containersWithKubelet";
@@ -21,6 +24,30 @@ public final class ContainerVersionHelpers {
 
     private ContainerVersionHelpers() {
         throw new IllegalStateException("Do not instantiate");
+    }
+
+    public static Stream<DynamicTest> allContainers(final Consumer<? super KubernetesContainer<?>> test) {
+        return testFactory(allContainers(), test);
+    }
+
+    public static Stream<DynamicTest> kubeletContainers(final Consumer<? super KubernetesWithKubeletContainer<?>> test) {
+        return testFactory(containersWithKubelet(), test);
+    }
+
+    public static Stream<DynamicTest> reusableContainers(final Consumer<? super KubernetesContainer<?>> test) {
+        return testFactory(reusableContainers(), test);
+    }
+
+    public static Stream<DynamicTest> kindContainers(final Consumer<? super KindContainer<?>> test) {
+        return testFactory(kindContainers(), test);
+    }
+
+    public static Stream<DynamicTest> k3sContainers(final Consumer<? super K3sContainer<?>> test) {
+        return testFactory(k3sContainers(), test);
+    }
+
+    public static Stream<DynamicTest> apiServerContainers(final Consumer<? super ApiServerContainer<?>> test) {
+        return testFactory(apiServerContainers(), test);
     }
 
     public static Stream<Supplier<KubernetesContainer<?>>> allContainers() {
@@ -43,27 +70,55 @@ public final class ContainerVersionHelpers {
     }
 
     public static Stream<Supplier<KindContainer<?>>> kindContainers() {
-        return Stream.of(containerFactory(
-                KindContainer::new,
-                KindContainer.class.getSimpleName(),
-                latest(KindContainerVersion.class)
-        ));
+        return Stream.of(KindContainerVersion.values())
+                .filter(isInContainerFilter(latest(KindContainerVersion.class)))
+                .map(version -> containerFactory(
+                        KindContainer::new,
+                        KindContainer.class.getSimpleName(),
+                        version
+                ));
     }
 
     public static Stream<Supplier<K3sContainer<?>>> k3sContainers() {
-        return Stream.of(containerFactory(
-                K3sContainer::new,
-                K3sContainer.class.getSimpleName(),
-                latest(K3sContainerVersion.class)
-        ));
+        return Stream.of(K3sContainerVersion.values())
+                .filter(isInContainerFilter(latest(K3sContainerVersion.class)))
+                .map(version -> containerFactory(
+                        K3sContainer::new,
+                        K3sContainer.class.getSimpleName(),
+                        version
+                ));
     }
 
     public static Stream<Supplier<ApiServerContainer<?>>> apiServerContainers() {
-        return Stream.of(containerFactory(
-                ApiServerContainer::new,
-                ApiServerContainer.class.getSimpleName(),
-                latest(ApiServerContainerVersion.class)
-        ));
+        return Stream.of(ApiServerContainerVersion.values())
+                .filter(isInContainerFilter(latest(ApiServerContainerVersion.class)))
+                .map(version -> containerFactory(
+                        ApiServerContainer::new,
+                        ApiServerContainer.class.getSimpleName(),
+                        version
+                ));
+    }
+
+    private static <T> Stream<DynamicTest> testFactory(
+            final Stream<Supplier<T>> containers,
+            final Consumer<? super T> test
+    ) {
+        return containers.map(factory -> dynamicTest(factory.toString(), () -> test.accept(factory.get())));
+    }
+
+    private static <T extends KubernetesVersionEnum<?>> Predicate<T> isInContainerFilter(final T defaultVersion) {
+        assert defaultVersion != null;
+        return Optional.ofNullable(System.getenv("CONTAINER_FILTER"))
+                .map(filter -> (Predicate<T>) version -> {
+                    final String[] parts = filter.split(" ", 2);
+                    final String container = parts[0];
+                    final String versionString = parts[1];
+                    if (!version.getClass().getSimpleName().equals(format("%sVersion", container))) {
+                        return false;
+                    }
+                    return format("v%s", versionString).equals(version.descriptor().getKubernetesVersion());
+                })
+                .orElse(version -> version.descriptor().equals(version.descriptor()));
     }
 
     private static <T> Supplier<T> containerFactory(
@@ -71,7 +126,7 @@ public final class ContainerVersionHelpers {
             final String containerName,
             final KubernetesVersionEnum<?> version
     ) {
-        return namedFactory(supplier, String.format("%s %s", containerName, version.descriptor().getKubernetesVersion()));
+        return namedFactory(supplier, format("%s %s", containerName, version.descriptor().getKubernetesVersion()));
     }
 
     private static <T> Supplier<T> namedFactory(final Supplier<T> supplier, final String name) {
@@ -86,25 +141,6 @@ public final class ContainerVersionHelpers {
                 return name;
             }
         };
-    }
-
-    public static <T> Stream<Supplier<T>> configure(
-            final Stream<Supplier<T>> stream,
-            final Consumer<T> mod
-    ) {
-        return stream.map(s -> new Supplier<T>() {
-            @Override
-            public T get() {
-                final T k8s = s.get();
-                mod.accept(k8s);
-                return k8s;
-            }
-
-            @Override
-            public String toString() {
-                return s.toString();
-            }
-        });
     }
 
     public static <T extends GenericContainer<?>> void runWithK8s(T container, final Consumer<T> consumer) {

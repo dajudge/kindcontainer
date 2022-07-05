@@ -5,13 +5,13 @@ import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.Pod;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePortBuilder;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
 import java.util.HashMap;
-import java.util.function.Supplier;
+import java.util.stream.Stream;
 
-import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.CONTAINERS_WITH_KUBELET;
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.kubeletContainers;
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.runWithK8s;
 import static com.dajudge.kindcontainer.util.TestUtils.*;
 import static java.time.Duration.ofSeconds;
@@ -19,13 +19,18 @@ import static org.awaitility.Awaitility.await;
 
 public class NodePortTest {
 
-    @ParameterizedTest
-    @MethodSource(CONTAINERS_WITH_KUBELET)
-    public void exposes_node_port(final Supplier<KubernetesWithKubeletContainer<?>> factory) {
-        runWithK8s(factory.get().withExposedPorts(30000), this::assertExposesNodePort);
+    @TestFactory
+    public Stream<DynamicTest> exposes_node_port() {
+        return kubeletContainers(k8s -> {
+            runWithK8s(configureContainer(k8s), this::assertExposesNodePort);
+        });
     }
 
-    private void assertExposesNodePort(KubernetesWithKubeletContainer<?> k8s) {
+    private KubernetesWithKubeletContainer<?> configureContainer(final KubernetesWithKubeletContainer<?> container) {
+        return container.withExposedPorts(30000);
+    }
+
+    private void assertExposesNodePort(final KubernetesWithKubeletContainer<?> k8s) {
         final Pod pod = runWithClient(k8s, client -> {
             return createSimplePod(client, createNewNamespace(client));
         });

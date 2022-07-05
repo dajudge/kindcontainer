@@ -3,22 +3,20 @@ package com.dajudge.kindcontainer;
 import io.fabric8.kubernetes.client.Config;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientException;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
-import java.util.function.Supplier;
+import java.util.stream.Stream;
 
-import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.CONTAINERS_WITH_KUBELET;
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.kubeletContainers;
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.runWithK8s;
 import static org.junit.jupiter.api.Assertions.fail;
 
 public class ServiceAccountTest {
 
-    @ParameterizedTest
-    @MethodSource(CONTAINERS_WITH_KUBELET)
-    public void creates_client_for_service_account(final Supplier<KubernetesWithKubeletContainer<?>> factory) {
-        runWithK8s(createContainer(factory), this::assertCreatesClientForServiceAccount);
+    @TestFactory
+    public Stream<DynamicTest> creates_client_for_service_account() {
+        return kubeletContainers(k8s -> runWithK8s(configureContainer(k8s), this::assertCreatesClientForServiceAccount));
     }
 
     private void assertCreatesClientForServiceAccount(KubernetesWithKubeletContainer<?> k8s) {
@@ -42,10 +40,10 @@ public class ServiceAccountTest {
         }
     }
 
-    private static KubernetesWithKubeletContainer<?> createContainer(
-            final Supplier<KubernetesWithKubeletContainer<?>> factory
+    private static KubernetesWithKubeletContainer<?> configureContainer(
+            final KubernetesWithKubeletContainer<?> container
     ) {
-        return factory.get().withKubectl(kubectl -> kubectl.apply
+        return container.withKubectl(kubectl -> kubectl.apply
                 .fileFromClasspath("manifests/serviceaccount1.yaml")
                 .run());
     }

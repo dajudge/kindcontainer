@@ -37,5 +37,5 @@ jobs:
           distribution: 'adopt'
       - name: Build with Gradle
         env:
-          TEST_FILTER: ${{ matrix.version }}
-        run: ./gradlew tasks
+          CONTAINER_FILTER: ${{ matrix.version }}
+        run: ./gradlew build

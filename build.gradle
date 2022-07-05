@@ -49,12 +49,12 @@ java {
     withSourcesJar()
 }
 
-
 test {
     // suppress completely stupid stacktrace dump by fabric8
     systemProperty "kubernetes.disable.autoConfig", "true"
 
     environment 'TESTCONTAINERS_REUSE_ENABLE', 'true'
+    environment 'CONTAINER_FILTER', System.getenv("CONTAINER_FILTER")
 
     useJUnitPlatform()
 
@@ -62,5 +62,3 @@ test {
         showStandardStreams = true
     }
 }
-
-println System.getenv("TEST_FILTER")
