@@ -1,5 +1,6 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import com.dajudge.kindcontainer.util.TestUtils;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -18,8 +19,8 @@ public class CertificatesTest {
         return kindContainers(this::assertAddsCertificate);
     }
 
-    private void assertAddsCertificate(final KindContainer<?> container) {
-        runWithK8s(container.withCaCert(MountableFile.forClasspathResource("test.crt")), k8s -> {
+    private void assertAddsCertificate(final KubernetesTestPackage<? extends KindContainer<?>> container) {
+        runWithK8s(container.newContainer().withCaCert(MountableFile.forClasspathResource("test.crt")), k8s -> {
             final String allCerts = k8s.copyFileFromContainer(
                     "/etc/ssl/certs/ca-certificates.crt",
                     TestUtils::readString

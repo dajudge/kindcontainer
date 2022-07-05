@@ -1,5 +1,6 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import com.dajudge.kindcontainer.util.TestUtils;
 import io.fabric8.kubernetes.api.model.IntOrString;
 import io.fabric8.kubernetes.api.model.Pod;
@@ -21,43 +22,43 @@ public class NodePortTest {
 
     @TestFactory
     public Stream<DynamicTest> exposes_node_port() {
-        return kubeletContainers(k8s -> {
-            runWithK8s(configureContainer(k8s), this::assertExposesNodePort);
+        return kubeletContainers(this::assertExposesNodePort);
+    }
+
+    private void assertExposesNodePort(final KubernetesTestPackage<? extends KubernetesWithKubeletContainer<?>> testPkg) {
+        runWithK8s(configureContainer(testPkg.newContainer()), k8s -> {
+            final Pod pod = runWithClient(k8s, client -> {
+                return createSimplePod(client, createNewNamespace(client));
+            });
+            runWithClient(k8s, client -> {
+                client.services().create(new ServiceBuilder()
+                        .withNewMetadata()
+                        .withName("nginx")
+                        .withNamespace(pod.getMetadata().getNamespace())
+                        .endMetadata()
+                        .withNewSpec()
+                        .withType("NodePort")
+                        .withSelector(new HashMap<String, String>() {{
+                            put("app", "nginx");
+                        }})
+                        .withPorts(new ServicePortBuilder()
+                                .withNodePort(30000)
+                                .withPort(80)
+                                .withTargetPort(new IntOrString(80))
+                                .withProtocol("TCP")
+                                .build())
+                        .endSpec()
+                        .build());
+                await("testpod")
+                        .timeout(ofSeconds(300))
+                        .until(TestUtils.http("http://localhost:" + k8s.getMappedPort(30000)));
+
+            });
         });
     }
 
     private KubernetesWithKubeletContainer<?> configureContainer(final KubernetesWithKubeletContainer<?> container) {
         return container.withExposedPorts(30000);
-    }
-
-    private void assertExposesNodePort(final KubernetesWithKubeletContainer<?> k8s) {
-        final Pod pod = runWithClient(k8s, client -> {
-            return createSimplePod(client, createNewNamespace(client));
-        });
-        runWithClient(k8s, client -> {
-            client.services().create(new ServiceBuilder()
-                    .withNewMetadata()
-                    .withName("nginx")
-                    .withNamespace(pod.getMetadata().getNamespace())
-                    .endMetadata()
-                    .withNewSpec()
-                    .withType("NodePort")
-                    .withSelector(new HashMap<String, String>() {{
-                        put("app", "nginx");
-                    }})
-                    .withPorts(new ServicePortBuilder()
-                            .withNodePort(30000)
-                            .withPort(80)
-                            .withTargetPort(new IntOrString(80))
-                            .withProtocol("TCP")
-                            .build())
-                    .endSpec()
-                    .build());
-            await("testpod")
-                    .timeout(ofSeconds(300))
-                    .until(TestUtils.http("http://localhost:" + k8s.getMappedPort(30000)));
-
-        });
     }
 
 }

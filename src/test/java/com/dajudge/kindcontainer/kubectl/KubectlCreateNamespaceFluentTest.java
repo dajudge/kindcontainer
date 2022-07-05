@@ -1,6 +1,8 @@
 package com.dajudge.kindcontainer.kubectl;
 
+import com.dajudge.kindcontainer.ApiServerContainer;
 import com.dajudge.kindcontainer.KubernetesContainer;
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -17,10 +19,11 @@ public class KubectlCreateNamespaceFluentTest {
         return apiServerContainers(this::assertCreatesNamespace);
     }
 
-    private void assertCreatesNamespace(final KubernetesContainer<?> container) {
-        runWithK8s(createContainer(container), k8s -> runWithClient(k8s, client -> {
+    private void assertCreatesNamespace(final KubernetesTestPackage<? extends ApiServerContainer<?>> testPkg) {
+        runWithK8s(createContainer(testPkg.newContainer()), k8s -> runWithClient(k8s, client -> {
             assertNotNull(client.namespaces().withName("my-namespace").get());
         }));
+
     }
 
     private KubernetesContainer<?> createContainer(final KubernetesContainer<?> container) {

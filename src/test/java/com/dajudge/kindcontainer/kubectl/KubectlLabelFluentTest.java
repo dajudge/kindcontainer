@@ -1,6 +1,7 @@
 package com.dajudge.kindcontainer.kubectl;
 
 import com.dajudge.kindcontainer.ApiServerContainer;
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import io.fabric8.kubernetes.api.model.Namespace;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -20,8 +21,8 @@ public class KubectlLabelFluentTest {
         return apiServerContainers(this::assertAddsAllLabels);
     }
 
-    private void assertAddsAllLabels(final ApiServerContainer<?> container) {
-        runWithK8s(configureContainer(container), k8s -> runWithClient(k8s, client -> {
+    private void assertAddsAllLabels(final KubernetesTestPackage<? extends ApiServerContainer<?>> testPkg) {
+        runWithK8s(configureContainer(testPkg.newContainer()), k8s -> runWithClient(k8s, client -> {
             final Namespace namespace = client.namespaces().withName("default").get();
             assertNotNull(namespace);
             new HashMap<String, String>() {{

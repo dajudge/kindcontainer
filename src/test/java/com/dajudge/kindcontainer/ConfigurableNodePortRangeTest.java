@@ -25,9 +25,9 @@ public class ConfigurableNodePortRangeTest {
 
     @TestFactory
     public Stream<DynamicTest> can_expose_in_valid_range() {
-        return kubeletContainers(container -> {
-            runWithK8s(configureContainer(container), k8s -> {
-                runWithClient(configureContainer(container), client -> {
+        return kubeletContainers(testPkg -> {
+            runWithK8s(configureContainer(testPkg.newContainer()), k8s -> {
+                runWithClient(k8s, client -> {
                     createService(client, "valid-port-service-min", 20000);
                     createService(client, "valid-port-service-max", 20010);
                 });
@@ -37,9 +37,9 @@ public class ConfigurableNodePortRangeTest {
 
     @TestFactory
     public Stream<DynamicTest> cannot_expose_outside_of_valid_range() {
-        return kubeletContainers(container -> {
-            runWithK8s(configureContainer(container), k8s -> assertThrows(KubernetesClientException.class, () -> {
-                try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(container.getKubeconfig()))) {
+        return kubeletContainers(testPkg -> {
+            runWithK8s(configureContainer(testPkg.newContainer()), k8s -> assertThrows(KubernetesClientException.class, () -> {
+                try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(k8s.getKubeconfig()))) {
                     createService(client, "invalid-port-service", 20011);
                 }
             }));

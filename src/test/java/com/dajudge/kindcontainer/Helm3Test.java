@@ -1,9 +1,9 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.allContainers;
@@ -15,13 +15,13 @@ public class Helm3Test {
 
     @TestFactory
     public Stream<DynamicTest> can_install_something() {
-        return allContainers(k8s -> runWithK8s(configureContainer(k8s), this::assertCanInstallSomething));
+        return allContainers(this::assertCanInstallSomething);
     }
 
-    private void assertCanInstallSomething(final KubernetesContainer<?> k8s) {
-        runWithClient(k8s, client -> {
+    private void assertCanInstallSomething(final KubernetesTestPackage<? extends KubernetesContainer<?>> testPkg) {
+        runWithK8s(configureContainer(testPkg.newContainer()), k8s -> runWithClient(k8s, client -> {
             assertFalse(client.apps().deployments().inNamespace("kubernetes-replicator").list().getItems().isEmpty());
-        });
+        }));
     }
 
     private KubernetesContainer<?> configureContainer(KubernetesContainer<?> container) {

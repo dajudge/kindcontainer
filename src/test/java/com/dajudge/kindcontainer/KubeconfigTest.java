@@ -1,5 +1,6 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import org.junit.jupiter.api.DynamicTest;
@@ -17,15 +18,13 @@ public class KubeconfigTest {
 
     @TestFactory
     public Stream<DynamicTest> with_kubeconfig_gets_executed() {
-        return allContainers(k8s -> {
-            runWithK8s(configureContainer(k8s), this::assertWithKubeconfigGetsExecuted);
-        });
+        return allContainers(this::assertWithKubeconfigGetsExecuted);
     }
 
-    private void assertWithKubeconfigGetsExecuted(KubernetesContainer<?> k8s) {
-        runWithClient(k8s, client -> {
+    private void assertWithKubeconfigGetsExecuted(final KubernetesTestPackage<? extends KubernetesContainer<?>> testPkg) {
+        runWithK8s(configureContainer(testPkg.newContainer()), k8s -> runWithClient(k8s, client -> {
             assertNotNull(client.inNamespace("default").configMaps().withName("test").get());
-        });
+        }));
     }
 
     private static KubernetesContainer<?> configureContainer(final KubernetesContainer<?> container) {

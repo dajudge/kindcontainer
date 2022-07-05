@@ -1,6 +1,7 @@
 package com.dajudge.kindcontainer.kubectl;
 
 import com.dajudge.kindcontainer.ApiServerContainer;
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -18,8 +19,8 @@ public class KubectlCreateSecretFluentTest {
         return apiServerContainers(this::assertCreatesDockerSecret);
     }
 
-    private void assertCreatesDockerSecret(ApiServerContainer<?> container) {
-        runWithK8s(configureContainer(container), k8s -> runWithClient(k8s, client -> {
+    private void assertCreatesDockerSecret(final KubernetesTestPackage<? extends ApiServerContainer<?>> testPkg) {
+        runWithK8s(configureContainer(testPkg.newContainer()), k8s -> runWithClient(k8s, client -> {
             assertNotNull(client.inNamespace("default").secrets().withName("pull-secret").get());
         }));
     }

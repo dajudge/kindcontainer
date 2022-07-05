@@ -1,5 +1,6 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -18,18 +19,18 @@ public class IngressNginxTest {
 
     @TestFactory
     public Stream<DynamicTest> ingress_deployment_becomes_ready() {
-        return kubeletContainers(k8s -> runWithK8s(configureContainer(k8s), this::assertIngressDeploymentBecomesReady));
+        return kubeletContainers(this::assertIngressDeploymentBecomesReady);
     }
 
-    private void assertIngressDeploymentBecomesReady(KubernetesContainer<?> k8s) {
-        runWithClient(k8s, client -> {
+    private void assertIngressDeploymentBecomesReady(final KubernetesTestPackage<? extends KubernetesWithKubeletContainer<?>> testPkg) {
+        runWithK8s(configureContainer(testPkg.newContainer()), k8s -> runWithClient(k8s, client -> {
             final Deployment deployment = client.apps().deployments()
                     .inNamespace("ingress-nginx")
                     .withName("ingress-nginx-controller")
                     .get();
             assertNotNull(deployment);
             assertTrue(isDeploymentReady(deployment));
-        });
+        }));
     }
 
     private static KubernetesContainer<?> configureContainer(final KubernetesContainer<?> container) {

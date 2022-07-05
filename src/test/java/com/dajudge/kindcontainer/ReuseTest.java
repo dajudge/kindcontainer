@@ -17,11 +17,10 @@ public class ReuseTest {
 
     @TestFactory
     public Stream<DynamicTest> does_not_reapply_postAvailabilityExecutions() {
-        return reusableContainers()
-                .map(factory -> dynamicTest(
-                        factory.toString(),
-                        () -> assertDoesNotReapplyPostAvailabilityExecutions(factory)
-                ));
+        return reusableContainers().map(testPkg -> dynamicTest(
+                testPkg.toString(),
+                () -> assertDoesNotReapplyPostAvailabilityExecutions(testPkg::newContainer)
+        ));
     }
 
     private void assertDoesNotReapplyPostAvailabilityExecutions(final Supplier<KubernetesContainer<?>> factory) {

@@ -1,5 +1,6 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import com.dajudge.kindcontainer.util.TestUtils;
 import io.fabric8.kubernetes.api.model.*;
 import org.junit.jupiter.api.DynamicTest;
@@ -18,23 +19,25 @@ public class PersistentVolumeTest {
 
     @TestFactory
     public Stream<DynamicTest> can_start_pod_with_pvc() {
-        return kubeletContainers(k8s -> runWithK8s(k8s, this::assertCanStartPodWithPvc));
+        return kubeletContainers(this::assertCanStartPodWithPvc);
 
     }
 
-    private void assertCanStartPodWithPvc(KubernetesWithKubeletContainer<?> k8s) {
-        final String namespace = runWithClient(k8s, TestUtils::createNewNamespace);
-        final PersistentVolumeClaim claim = runWithClient(k8s, client -> {
-            return client.persistentVolumeClaims().inNamespace(namespace).create(buildClaim(namespace));
+    private void assertCanStartPodWithPvc(final KubernetesTestPackage<? extends KubernetesWithKubeletContainer<?>> testPkg) {
+        runWithK8s(testPkg.newContainer(), k8s -> {
+            final String namespace = runWithClient(k8s, TestUtils::createNewNamespace);
+            final PersistentVolumeClaim claim = runWithClient(k8s, client -> {
+                return client.persistentVolumeClaims().inNamespace(namespace).create(buildClaim(namespace));
+            });
+            final Pod pod = runWithClient(k8s, client -> {
+                return client.pods().inNamespace(namespace).create(buildPod(claim));
+            });
+            await("testpod")
+                    .timeout(ofSeconds(300))
+                    .until(() -> runWithClient(k8s, client -> {
+                        return isRunning(client, pod);
+                    }));
         });
-        final Pod pod = runWithClient(k8s, client -> {
-            return client.pods().inNamespace(namespace).create(buildPod(claim));
-        });
-        await("testpod")
-                .timeout(ofSeconds(300))
-                .until(() -> runWithClient(k8s, client -> {
-                    return isRunning(client, pod);
-                }));
     }
 
     private PersistentVolumeClaim buildClaim(final String namespace) {

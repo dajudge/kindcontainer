@@ -1,6 +1,7 @@
 package com.dajudge.kindcontainer.kubectl;
 
 import com.dajudge.kindcontainer.KubernetesContainer;
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -18,8 +19,8 @@ public class KubectlContainerTest {
         return allContainers(this::assertKubectlWorks);
     }
 
-    private void assertKubectlWorks(KubernetesContainer<?> container) {
-        runWithK8s(createK8s(container), k8s -> runWithClient(k8s, client -> {
+    private void assertKubectlWorks(ContainerVersionHelpers.KubernetesTestPackage<?> pkg) {
+        runWithK8s(createK8s(pkg.newContainer()), k8s -> runWithClient(k8s, client -> {
             assertNotNull(client.inNamespace("my-namespace").serviceAccounts().withName("my-service-account").get());
         }));
     }
