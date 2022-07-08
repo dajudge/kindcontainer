@@ -1,10 +1,12 @@
 
 task generateVersionEnums {
     def outputDir = file("$buildDir/generated/sources/codegen/java/main/")
+    def versionDefFile = file("k8s-versions.json")
     outputs.dir outputDir
+    inputs.file versionDefFile
     doLast {
         outputDir.mkdirs()
-        def versionsJson = new groovy.json.JsonSlurper().parse(file("k8s-versions.json")) as Map<String, Object>
+        def versionsJson = new groovy.json.JsonSlurper().parse(versionDefFile) as Map<String, Object>
         versionsJson.keySet().forEach { container ->
             def enumName = "${container}Version"
             def code = """package com.dajudge.kindcontainer;
