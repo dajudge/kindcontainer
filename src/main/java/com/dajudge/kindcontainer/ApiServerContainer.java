@@ -9,15 +9,14 @@ import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
+import static com.dajudge.kindcontainer.KubernetesVersionEnum.latest;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.time.Duration.ZERO;
@@ -27,7 +26,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
 import static java.util.concurrent.TimeUnit.SECONDS;
-import static java.util.stream.Collectors.toList;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 public class ApiServerContainer<T extends ApiServerContainer<T>> extends KubernetesContainer<T> {
@@ -58,7 +56,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
      * Constructs a new <code>ApiServerContainer</code> with the latest supported Kubernetes version.
      */
     public ApiServerContainer() {
-        this(Version.getLatest());
+        this(latest(ApiServerContainerVersion.class));
     }
 
     /**
@@ -66,7 +64,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
      *
      * @param version the Kubernetes version to run.
      */
-    public ApiServerContainer(final Version version) {
+    public ApiServerContainer(final ApiServerContainerVersion version) {
         super(getDockerImage(version));
         final KeyStoreWrapper etcdClientKeyPair = etcdCa.newKeyPair("CN=API Server", emptyList());
         this
@@ -89,8 +87,8 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .withCopyAsciiToContainer(etcdCa.getCaKeyStore().getCertificatePem(), ETCD_CLIENT_CA);
     }
 
-    private static DockerImageName getDockerImage(final Version version) {
-        return DockerImageName.parse(format("k8s.gcr.io/kube-apiserver:%s", version.descriptor.getKubernetesVersion()));
+    private static DockerImageName getDockerImage(final ApiServerContainerVersion version) {
+        return DockerImageName.parse(format("k8s.gcr.io/kube-apiserver:%s", version.descriptor().getKubernetesVersion()));
     }
 
     @Override
@@ -197,52 +195,5 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     public void stop() {
         super.stop();
         etcd.stop();
-    }
-
-    /**
-     * The available Kubernetes versions.
-     */
-    public enum Version {
-        VERSION_1_21_2(new KubernetesVersionDescriptor(1, 21, 2)),
-        VERSION_1_22_4(new KubernetesVersionDescriptor(1, 22, 4)),
-        VERSION_1_23_4(new KubernetesVersionDescriptor(1, 23, 4));
-
-        private static final Comparator<Version> COMPARE_ASCENDING = comparing(a -> a.descriptor);
-        private static final Comparator<Version> COMPARE_DESCENDING = COMPARE_ASCENDING.reversed();
-        @VisibleForTesting
-        final KubernetesVersionDescriptor descriptor;
-
-        Version(final KubernetesVersionDescriptor descriptor) {
-            this.descriptor = descriptor;
-        }
-
-        /**
-         * Returns the latest supported version.
-         *
-         * @return the latest supported version.
-         */
-        public static Version getLatest() {
-            return descending().get(0);
-        }
-
-        /**
-         * Returns the list of available versions in descending order (latest is first).
-         *
-         * @return the list of available versions in descending order (latest is first).
-         */
-        public static List<Version> descending() {
-            return Stream.of(Version.values())
-                    .sorted(COMPARE_DESCENDING)
-                    .collect(toList());
-        }
-
-        public KubernetesVersionDescriptor getDescriptor() {
-            return descriptor;
-        }
-
-        @Override
-        public String toString() {
-            return format("%d.%d.%d", descriptor.getMajor(), descriptor.getMinor(), descriptor.getPatch());
-        }
     }
 }

@@ -1,14 +1,15 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import com.dajudge.kindcontainer.util.TestUtils;
 import io.fabric8.kubernetes.api.model.*;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
 import java.util.HashMap;
-import java.util.function.Supplier;
+import java.util.stream.Stream;
 
-import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.CONTAINERS_WITH_KUBELET;
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.kubeletContainers;
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.runWithK8s;
 import static com.dajudge.kindcontainer.util.TestUtils.*;
 import static java.time.Duration.ofSeconds;
@@ -16,10 +17,14 @@ import static org.awaitility.Awaitility.await;
 
 public class PersistentVolumeTest {
 
-    @ParameterizedTest
-    @MethodSource(CONTAINERS_WITH_KUBELET)
-    public void can_start_pod_with_pvc(final Supplier<KubernetesWithKubeletContainer<?>> factory) {
-        runWithK8s(factory.get(), k8s -> {
+    @TestFactory
+    public Stream<DynamicTest> can_start_pod_with_pvc() {
+        return kubeletContainers(this::assertCanStartPodWithPvc);
+
+    }
+
+    private void assertCanStartPodWithPvc(final KubernetesTestPackage<? extends KubernetesWithKubeletContainer<?>> testPkg) {
+        runWithK8s(testPkg.newContainer(), k8s -> {
             final String namespace = runWithClient(k8s, TestUtils::createNewNamespace);
             final PersistentVolumeClaim claim = runWithClient(k8s, client -> {
                 return client.persistentVolumeClaims().inNamespace(namespace).create(buildClaim(namespace));

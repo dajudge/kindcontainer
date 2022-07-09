@@ -1,0 +1,53 @@
+
+task generateVersionEnums {
+    def outputDir = file("$buildDir/generated/sources/codegen/java/main/")
+    def versionDefFile = file("k8s-versions.json")
+    outputs.dir outputDir
+    inputs.file versionDefFile
+    doLast {
+        outputDir.mkdirs()
+        def versionsJson = new groovy.json.JsonSlurper().parse(versionDefFile) as Map<String, Object>
+        versionsJson.keySet().forEach { container ->
+            def enumName = "${container}Version"
+            def code = """package com.dajudge.kindcontainer;
+import com.dajudge.kindcontainer.KubernetesVersionDescriptor;
+import com.dajudge.kindcontainer.KubernetesVersionEnum;
+import static java.lang.String.format;
+
+// generated from k8s-versions.json
+public enum ${enumName} implements KubernetesVersionEnum<${enumName}> {
+${
+                versionsJson.get(container).collect({ version ->
+                    def versionParts = version.get("k8s").split("\\.")
+                    def major = versionParts[0]
+                    def minor = versionParts[1]
+                    def patch = versionParts[2]
+                    "\tVERSION_${major}_${minor}_${patch}(new KubernetesVersionDescriptor(${major}, ${minor}, ${patch}))"
+                }).join(",\n")
+            };
+    
+    private final KubernetesVersionDescriptor descriptor;
+    
+    private ${enumName}(final KubernetesVersionDescriptor descriptor) {
+        this.descriptor = descriptor;
+    }
+    
+    @Override
+    public KubernetesVersionDescriptor descriptor() {
+        return descriptor;
+    }
+    
+    @Override
+    public String toString() {
+        return format("%d.%d.%d", descriptor.getMajor(), descriptor.getMinor(), descriptor.getPatch());
+    }
+}
+"""
+            def classDir = new File(outputDir, "com/dajudge/kindcontainer")
+            classDir.mkdirs()
+            new File(classDir, "${enumName}.java").write(code)
+        }
+    }
+}
+build.dependsOn generateVersionEnums
+sourceSets.main.java.srcDirs += generateVersionEnums.outputs

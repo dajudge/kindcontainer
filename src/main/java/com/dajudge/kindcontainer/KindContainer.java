@@ -23,6 +23,7 @@ import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import static com.dajudge.kindcontainer.KubernetesVersionEnum.latest;
 import static com.dajudge.kindcontainer.TemplateHelpers.templateContainerFile;
 import static com.dajudge.kindcontainer.TemplateHelpers.templateResource;
 import static com.dajudge.kindcontainer.Utils.waitUntilNotNull;
@@ -60,7 +61,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
     private static final String KUBECONFIG_PATH = "/etc/kubernetes/admin.conf";
     private static final String NODE_NAME = "kind";
     private final CountDownLatch provisioningLatch = new CountDownLatch(1);
-    private final Version version;
+    private final KindContainerVersion version;
     private String volumeName = "kindcontainer-" + UUID.randomUUID();
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
@@ -73,7 +74,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
      * Constructs a new <code>KindContainer</code> with the latest supported Kubernetes version.
      */
     public KindContainer() {
-        this(Version.getLatest());
+        this(latest(KindContainerVersion.class));
     }
 
     /**
@@ -81,7 +82,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
      *
      * @param version the Kubernetes version to run.
      */
-    public KindContainer(final Version version) {
+    public KindContainer(final KindContainerVersion version) {
         super(getDockerImage(version));
         this.version = version;
         this.withStartupTimeout(ofSeconds(300))
@@ -124,8 +125,8 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
         return self();
     }
 
-    private static DockerImageName getDockerImage(final Version version) {
-        return DockerImageName.parse(format("kindest/node:%s", version.descriptor.getKubernetesVersion()));
+    private static DockerImageName getDockerImage(final KindContainerVersion version) {
+        return DockerImageName.parse(format("kindest/node:%s", version.descriptor().getKubernetesVersion()));
     }
 
     @Override
@@ -201,7 +202,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
             put(".PodSubnet", podSubnet);
             put(".ServiceSubnet", serviceSubnet);
             put(".CertSANs", subjectAlternativeNames.stream().map(san -> "\"" + san + "\"").collect(joining(",")));
-            put(".KubernetesVersion", version.descriptor.getKubernetesVersion());
+            put(".KubernetesVersion", version.descriptor().getKubernetesVersion());
             put(".MinNodePort", String.valueOf(minNodePort));
             put(".MaxNodePort", String.valueOf(maxNodePort));
         }};

@@ -1,30 +1,31 @@
 package com.dajudge.kindcontainer;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
+import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
+import org.junit.jupiter.api.DynamicTest;
+import org.junit.jupiter.api.TestFactory;
 
-import java.util.function.Supplier;
+import java.util.stream.Stream;
 
-import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.ALL_CONTAINERS;
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.allContainers;
+import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.runWithK8s;
 import static com.dajudge.kindcontainer.util.TestUtils.runWithClient;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class Helm3Test {
 
-    @ParameterizedTest
-    @MethodSource(ALL_CONTAINERS)
-    public void can_install_something(final Supplier<KubernetesContainer<?>> factory) {
-        try (final KubernetesContainer<?> k8s = createContainer(factory)) {
-            k8s.start();
-            runWithClient(k8s, client -> {
-                assertFalse(client.apps().deployments().inNamespace("kubernetes-replicator").list().getItems().isEmpty());
-            });
-        }
+    @TestFactory
+    public Stream<DynamicTest> can_install_something() {
+        return allContainers(this::assertCanInstallSomething);
     }
 
-    private KubernetesContainer<?> createContainer(final Supplier<KubernetesContainer<?>> factory) {
-        return factory.get().withHelm3(helm -> {
+    private void assertCanInstallSomething(final KubernetesTestPackage<? extends KubernetesContainer<?>> testPkg) {
+        runWithK8s(configureContainer(testPkg.newContainer()), k8s -> runWithClient(k8s, client -> {
+            assertFalse(client.apps().deployments().inNamespace("kubernetes-replicator").list().getItems().isEmpty());
+        }));
+    }
+
+    private KubernetesContainer<?> configureContainer(KubernetesContainer<?> container) {
+        return container.withHelm3(helm -> {
             helm.repo.add.run("mittwald", "https://helm.mittwald.de");
             helm.repo.update.run();
             helm.install

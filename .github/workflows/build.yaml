@@ -1,8 +1,33 @@
 name: CI Build
 on: [push]
 jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v2
+      - id: set-matrix
+        run: |
+          matrix=$( cat k8s-versions.json | jq '{version: [keys[] as $k | .[$k][] | .k8s as $v | "\($k) \($v)"]}' -c )
+          echo $matrix
+          echo "::set-output name=matrix::$matrix"
+
+  check-matrix:
+    runs-on: ubuntu-latest
+    needs: matrix
+    steps:
+      - name: Check matrix definition
+        run: |
+          matrix='${{ needs.matrix.outputs.matrix }}'
+          echo $matrix
+          echo $matrix | jq .
+
   build:
     runs-on: ubuntu-latest
+    needs: matrix
+    strategy:
+      matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v2
       - name: Set up JDK 11
@@ -11,4 +36,6 @@ jobs:
           java-version: '11'
           distribution: 'adopt'
       - name: Build with Gradle
+        env:
+          CONTAINER_FILTER: ${{ matrix.version }}
         run: ./gradlew build

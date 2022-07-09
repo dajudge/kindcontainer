@@ -21,6 +21,7 @@ println "Build version $version"
 
 apply from: "${rootProject.projectDir}/publishing.gradle"
 apply from: "${rootProject.projectDir}/signing.gradle"
+apply from: "${rootProject.projectDir}/codegen.gradle"
 
 ext {
     testcontainersVersion = "1.17.3"
@@ -48,12 +49,12 @@ java {
     withSourcesJar()
 }
 
-
 test {
     // suppress completely stupid stacktrace dump by fabric8
     systemProperty "kubernetes.disable.autoConfig", "true"
 
     environment 'TESTCONTAINERS_REUSE_ENABLE', 'true'
+    environment 'CONTAINER_FILTER', System.getenv("CONTAINER_FILTER")
 
     useJUnitPlatform()
 
