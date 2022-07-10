@@ -170,7 +170,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
                 kubeadmInit(params);
                 installCni(params);
                 installStorage();
-                untaintMasterNode();
+                untaintNode();
                 waitForNodeReady();
             } catch (final Exception e) {
                 throw new RuntimeException("Failed to initialize node", e);
@@ -224,14 +224,17 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
         exec(singletonList("update-ca-certificates"));
     }
 
-    private void untaintMasterNode() throws IOException, InterruptedException {
+    private void untaintNode() throws IOException, InterruptedException {
         kubectl("taint", "node", NODE_NAME, "node-role.kubernetes.io/master:NoSchedule-");
+        if (version.descriptor().compareTo(new KubernetesVersionDescriptor(1, 24, 0)) >= 0) {
+            kubectl("taint", "node", NODE_NAME, "node-role.kubernetes.io/control-plane:NoSchedule-");
+        }
     }
 
     private void kubeadmInit(final Map<String, String> params) throws IOException, InterruptedException {
         try {
             final String kubeadmResource = getKubeadmResource();
-            final String kubeadmConfigPath= format("%s/%s", CONTAINTER_WORKDIR, kubeadmResource);
+            final String kubeadmConfigPath = format("%s/%s", CONTAINTER_WORKDIR, kubeadmResource);
             final String kubeadmConfig = templateResource(this, kubeadmResource, params, kubeadmConfigPath);
             exec(asList(
                     "kubeadm", "init",
