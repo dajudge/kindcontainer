@@ -69,8 +69,8 @@ public class RequestBuilder {
     private Response.ResponseWrapper executeRequest(final HttpURLConnection conn) throws IOException {
         try {
             return new Response.ResponseWrapper(conn.getResponseCode(), conn.getInputStream(), conn);
-        } catch (final FileNotFoundException e) {
-            return new Response.ResponseWrapper(404, conn.getErrorStream(), conn);
+        } catch(final IOException e) {
+            return new Response.ResponseWrapper(conn.getResponseCode(), conn.getErrorStream(), conn);
         }
     }
 
