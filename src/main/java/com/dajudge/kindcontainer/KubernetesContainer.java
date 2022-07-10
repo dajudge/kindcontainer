@@ -5,27 +5,29 @@ import com.dajudge.kindcontainer.Utils.ThrowingRunnable;
 import com.dajudge.kindcontainer.client.TinyK8sClient;
 import com.dajudge.kindcontainer.client.config.KubeConfig;
 import com.dajudge.kindcontainer.client.config.UserSpec;
+import com.dajudge.kindcontainer.client.model.base.Metadata;
 import com.dajudge.kindcontainer.client.model.v1.ObjectReference;
 import com.dajudge.kindcontainer.client.model.v1.Secret;
 import com.dajudge.kindcontainer.client.model.v1.ServiceAccount;
 import com.dajudge.kindcontainer.helm.Helm3Container;
 import com.dajudge.kindcontainer.kubectl.KubectlContainer;
 import com.github.dockerjava.api.command.InspectContainerResponse;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.images.builder.Transferable;
+import org.jetbrains.annotations.NotNull;
 import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.parseKubeConfig;
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.serializeKubeConfig;
 import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL_IMAGE;
 import static java.lang.String.format;
-import static java.nio.charset.StandardCharsets.US_ASCII;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static java.time.temporal.ChronoUnit.SECONDS;
 import static java.util.Arrays.asList;
+import static java.util.Base64.getDecoder;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends BaseGenericContainer<T> {
     private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
@@ -36,7 +38,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         super(dockerImageName);
         this.withExposedPorts(getInternalPort())
                 .waitingFor(new WaitForPortsExternallyStrategy())
-                .withStartupTimeout(Duration.of(300, SECONDS));
+                .withStartupTimeout(Duration.of(300, ChronoUnit.SECONDS));
     }
 
     /**
@@ -156,13 +158,35 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         return TinyK8sClient.fromKubeconfig(getKubeconfig());
     }
 
+    /**
+     * Returns a kubeconfig that can be used for access from the outside (e.g. the JVM of JUnit tests) that is
+     * restricted to the permissions of a provided <code>ServiceAccount</code>.
+     *
+     * @param serviceAccountNamespace the namespace of the service account
+     * @param serviceAccountName      the name of the service account
+     * @return the kubeconfig
+     */
+    public String getServiceAccountKubeconfig(final String serviceAccountNamespace, final String serviceAccountName) {
+        return getServiceAccountKubeconfig(serviceAccountNamespace, serviceAccountName, true);
+    }
+
+    /**
+     * Returns a kubeconfig that can be used for access from the outside (e.g. the JVM of JUnit tests) that is
+     * restricted to the permissions of a provided <code>ServiceAccount</code>.
+     *
+     * @param serviceAccountNamespace the namespace of the service account
+     * @param serviceAccountName      the name of the service account
+     * @param autoCreateToken         if <code>true</code>, the service account will be created if it doesn't exist
+     * @return the kubeconfig
+     */
     public String getServiceAccountKubeconfig(
             final String serviceAccountNamespace,
-            final String serviceAccountName
+            final String serviceAccountName,
+            final boolean autoCreateToken
     ) {
         final KubeConfig kubeconfig = parseKubeConfig(getKubeconfig());
         final UserSpec userSpec = new UserSpec();
-        userSpec.setToken(getServiceAccountToken(serviceAccountNamespace, serviceAccountName, client()));
+        userSpec.setToken(getServiceAccountToken(serviceAccountNamespace, serviceAccountName, autoCreateToken, client()));
         kubeconfig.getUsers().get(0).setUser(userSpec);
         return serializeKubeConfig(kubeconfig);
     }
@@ -170,13 +194,31 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     private String getServiceAccountToken(
             final String serviceAccountNamespace,
             final String serviceAccountName,
+            final boolean autoCreateToken,
             final TinyK8sClient client
     ) {
+        final Secret secret = getServiceAccountSecret(serviceAccountNamespace, serviceAccountName, autoCreateToken, client);
+        final String token = secret.getData().get("token");
+        if (token == null) {
+            final String saName = serviceAccountNamespace + "/" + serviceAccountName;
+            throw new RuntimeException(String.format("No token found in service account secret: %s", saName));
+        }
+        return new String(getDecoder().decode(token), UTF_8);
+    }
+
+    @NotNull
+    private Secret getServiceAccountSecret(String serviceAccountNamespace, String serviceAccountName, boolean autoCreateToken, TinyK8sClient client) {
         final String saName = serviceAccountNamespace + "/" + serviceAccountName;
-        final ServiceAccount sa = client.v1().serviceAccounts().inNamespace(serviceAccountNamespace).find(serviceAccountName)
+        final ServiceAccount sa = client.v1().serviceAccounts()
+                .inNamespace(serviceAccountNamespace)
+                .find(serviceAccountName)
                 .orElseThrow(() -> new RuntimeException(format("ServiceAccount %s not found", saName)));
         if (sa.getSecrets() == null || sa.getSecrets().isEmpty()) {
-            throw new RuntimeException(format("ServiceAccount %s has no secrets", saName));
+            if (autoCreateToken) {
+                return createServiceAccountToken(serviceAccountNamespace, serviceAccountName, client);
+            } else {
+                throw new RuntimeException(format("ServiceAccount %s has no secrets", saName));
+            }
         }
         final ObjectReference secretRef = sa.getSecrets().get(0);
         final String secretNamespace = Optional.ofNullable(secretRef.getNamespace()).orElse(serviceAccountNamespace);
@@ -186,6 +228,30 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         if (!"kubernetes.io/service-account-token".equals(secret.getType())) {
             throw new RuntimeException(format("Secret %s/%s is not of type kubernetes.io/service-account-token", secretNamespace, secretName));
         }
-        return new String(Base64.getDecoder().decode(secret.getData().get("token")), UTF_8);
+        return secret;
+    }
+
+    private Secret createServiceAccountToken(String serviceAccountNamespace, String serviceAccountName, TinyK8sClient client) {
+        Secret secret = new Secret();
+        secret.setKind("Secret");
+        secret.setApiVersion("v1");
+        secret.setType("kubernetes.io/service-account-token");
+        secret.setMetadata(new Metadata());
+        secret.getMetadata().setName(String.format("kindcontainer-%s", UUID.randomUUID()));
+        secret.getMetadata().setNamespace(serviceAccountNamespace);
+        secret.getMetadata().setAnnotations(new HashMap<>());
+        secret.getMetadata().getAnnotations().put("kubernetes.io/service-account.name", serviceAccountName);
+        client.v1().secrets()
+                .inNamespace(serviceAccountNamespace)
+                .create(secret);
+        final String saName = format("%s/%s", secret.getMetadata().getNamespace(), secret.getMetadata().getName());
+        return await("Token for service account secret " + saName)
+                .atMost(10, SECONDS)
+                .until(
+                        () -> client.v1().secrets().inNamespace(serviceAccountNamespace)
+                                .find(secret.getMetadata().getName()),
+                        it -> it.map(Secret::getData).map(data -> data.get("token")).isPresent()
+                )
+                .orElseThrow(() -> new RuntimeException("No token found in secret: " + saName));
     }
 }
