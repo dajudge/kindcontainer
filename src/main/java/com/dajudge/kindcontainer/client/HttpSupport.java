@@ -110,7 +110,7 @@ public class HttpSupport {
                     .url(format("%s%s", masterUrl, path))
                     .method(method, wrappedRequestBody)
                     .execute();
-            if (result.code() > 400) {
+            if (result.code() >= 400) {
                 try {
                     if (result.code() == 409) {
                         errorSink.accept(new ConflictException());
@@ -120,7 +120,8 @@ public class HttpSupport {
                         return Watch.CLOSED;
                     }
                     final String bodyString = result.bodyAsString(US_ASCII);
-                    throw new RuntimeException("HTTP request failed with status " + result.code() + ": " + bodyString);
+                    errorSink.accept(new RuntimeException("HTTP request failed with status " + result.code() + ": " + bodyString));
+                    return Watch.CLOSED;
                 } finally {
                     result.close();
                 }
