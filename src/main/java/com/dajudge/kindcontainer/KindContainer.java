@@ -35,6 +35,7 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
+import static java.util.Map.Entry.comparingByKey;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
@@ -50,13 +51,16 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
     private static final Logger LOG = LoggerFactory.getLogger(KindContainer.class);
     private static final int CONTAINER_IP_TIMEOUT_MSECS = 60000;
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
-    private static final String KUBEADM_CONFIG = CONTAINTER_WORKDIR + "/kubeadmConfig.yaml";
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final String CACERTS_INSTALL_DIR = "/usr/local/share/ca-certificates";
     private static final Pattern PROVISIONING_TRIGGER_PATTERN = Pattern.compile(".*Reached target .*Multi-User System.*");
-    private static final HashMap<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
+    private static final Map<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
         put("/run", "rw");
         put("/tmp", "rw");
+    }};
+    private static final Map<KubernetesVersionDescriptor, String> KUBEADM_CONFIGS = new HashMap<KubernetesVersionDescriptor, String>() {{
+        put(new KubernetesVersionDescriptor(1, 21, 0), "kubeadm-1.21.0.yaml");
+        put(new KubernetesVersionDescriptor(1, 24, 0), "kubeadm-1.24.0.yaml");
     }};
     private static final String KUBECONFIG_PATH = "/etc/kubernetes/admin.conf";
     private static final String NODE_NAME = "kind";
@@ -226,7 +230,9 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
 
     private void kubeadmInit(final Map<String, String> params) throws IOException, InterruptedException {
         try {
-            final String kubeadmConfig = templateResource(this, "kubeadm.yaml", params, KUBEADM_CONFIG);
+            final String kubeadmResource = getKubeadmResource();
+            final String kubeadmConfigPath= format("%s/%s", CONTAINTER_WORKDIR, kubeadmResource);
+            final String kubeadmConfig = templateResource(this, kubeadmResource, params, kubeadmConfigPath);
             exec(asList(
                     "kubeadm", "init",
                     "--skip-phases=preflight",
@@ -246,6 +252,14 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
             }
             throw e;
         }
+    }
+
+    private String getKubeadmResource() {
+        return KUBEADM_CONFIGS.entrySet().stream()
+                .filter(v -> version.descriptor().compareTo(v.getKey()) >= 0)
+                .max(comparingByKey())
+                .orElseThrow(() -> new IllegalStateException(format("No kubeadm config available for Kubernetes version %s", version.descriptor())))
+                .getValue();
     }
 
     private void installStorage() throws IOException, InterruptedException {
