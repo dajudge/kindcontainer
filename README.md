@@ -1,14 +1,14 @@
 [![CI](https://github.com/dajudge/kindcontainer/actions/workflows/build.yaml/badge.svg)](https://github.com/dajudge/kindcontainer/actions/workflows/build.yaml)
 [![Maven central](https://img.shields.io/maven-central/v/com.dajudge.kindcontainer/kindcontainer)](https://search.maven.org/artifact/com.dajudge.kindcontainer/kindcontainer)
 
-kindcontainer
+Kindcontainer
 ---
 A Java-based [testcontainers.org](https://www.testcontainers.org/) container implementation that uses 
 [Kubernetes in Docker](https://github.com/kubernetes-sigs/kind) (KIND) to provide ephemeral Kubernetes
 clusters for unit/integration testing.
 
 ## Container Flavors
-The KindContainer libraries offers three different Kubernetes container implementations:
+The Kindcontainer libraries offers three different Kubernetes container implementations:
 * `ApiServerContainer`
 * `K3sContainer`
 * `KindContainer`
@@ -19,9 +19,9 @@ and even provision `PersistentVolumes`.
 
 ## Usage
 ### Add dependency
-First you need to add the kindcontainer dependency to your build. Kindcontainer is available on maven central.
+First you need to add the Kindcontainer dependency to your build. Kindcontainer is available on maven central.
 #### Maven
-Add the kindcontainer dependency:
+Add the Kindcontainer dependency:
 ```xml
 <project>
     <dependencies>
@@ -36,7 +36,7 @@ Add the kindcontainer dependency:
 ```
 
 #### Gradle
-Add the kindcontainer dependency:
+Add the Kindcontainer dependency:
 ```groovy
 repositories {
     mavenCentral()
