@@ -1,6 +1,7 @@
 {
   "KindContainer": [
     {
+      "deprecated": true,
       "k8s": "1.21.2"
     },
     {
@@ -27,6 +28,7 @@
   ],
   "K3sContainer": [
     {
+      "deprecated": true,
       "k8s": "1.21.9"
     },
     {
@@ -47,6 +49,7 @@
   ],
   "ApiServerContainer": [
     {
+      "deprecated": true,
       "k8s": "1.21.2"
     },
     {
