@@ -22,7 +22,9 @@ ${
                     def major = versionParts[0]
                     def minor = versionParts[1]
                     def patch = versionParts[2]
-                    "\tVERSION_${major}_${minor}_${patch}(new KubernetesVersionDescriptor(${major}, ${minor}, ${patch}))"
+                    def deprecated = version.get("deprecated") ?: false
+                    def deprecation = deprecated ? "\t@Deprecated\n" : ""
+                    "${deprecation}\tVERSION_${major}_${minor}_${patch}(new KubernetesVersionDescriptor(${major}, ${minor}, ${patch}))"
                 }).join(",\n")
             };
     
