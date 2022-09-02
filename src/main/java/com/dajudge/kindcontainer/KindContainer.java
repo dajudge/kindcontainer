@@ -3,6 +3,7 @@ package com.dajudge.kindcontainer;
 import com.dajudge.kindcontainer.client.TinyK8sClient;
 import com.dajudge.kindcontainer.client.model.v1.Node;
 import com.dajudge.kindcontainer.client.model.v1.NodeCondition;
+import com.dajudge.kindcontainer.client.model.v1.Taint;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.ContainerNetwork;
@@ -33,6 +34,7 @@ import static java.lang.String.format;
 import static java.lang.String.join;
 import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
+import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
 import static java.util.Map.Entry.comparingByKey;
@@ -224,11 +226,43 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
         exec(singletonList("update-ca-certificates"));
     }
 
-    private void untaintNode() throws IOException, InterruptedException {
-        kubectl("taint", "node", NODE_NAME, "node-role.kubernetes.io/master:NoSchedule-");
-        if (version.descriptor().compareTo(new KubernetesVersionDescriptor(1, 24, 0)) >= 0) {
-            kubectl("taint", "node", NODE_NAME, "node-role.kubernetes.io/control-plane:NoSchedule-");
+    private void untaintNode() {
+        client().v1().nodes().list().getItems().forEach(node -> {
+            asList("master", "control-plane").forEach(role -> {
+                final String key = format("node-role.kubernetes.io/%s", role);
+                final String effect = "NoSchedule";
+                final String removeTaint = String.format("%s:%s-", key, effect);
+                if (hasTaint(node, key, null, effect)) {
+                    try {
+                        kubectl("taint", "node", node.getMetadata().getName(), removeTaint);
+                    } catch (final IOException | InterruptedException e) {
+                        throw new RuntimeException("Failed to untaint node", e);
+                    }
+                }
+            });
+        });
+    }
+
+    private boolean hasTaint(final Node node, final String key, final String value, final String effect) {
+        return Optional.ofNullable(node.getSpec().getTaints()).orElse(emptyList()).stream()
+                .anyMatch(t -> isTaint(t, key, value, effect));
+    }
+
+    private static boolean isTaint(final Taint t, final String key, final String value, final String effect) {
+        if (!Objects.equals(t.getKey(), key)) {
+            return false;
         }
+        if (!Objects.equals(t.getValue(), value)) {
+            return false;
+        }
+        return Objects.equals(t.getEffect(), effect);
+    }
+
+    private boolean hasControlPlaneTaint() {
+        if (version.descriptor().compareTo(new KubernetesVersionDescriptor(1, 24, 0)) < 0) {
+            return false;
+        }
+        return true;
     }
 
     private void kubeadmInit(final Map<String, String> params) throws IOException, InterruptedException {
