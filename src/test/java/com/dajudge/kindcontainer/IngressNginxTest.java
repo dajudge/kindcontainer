@@ -2,6 +2,7 @@ package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
+import io.fabric8.kubernetes.client.readiness.Readiness;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -11,7 +12,7 @@ import static com.dajudge.kindcontainer.DeploymentAvailableWaitStrategy.deployme
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.kubeletContainers;
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.runWithK8s;
 import static com.dajudge.kindcontainer.util.TestUtils.runWithClient;
-import static io.fabric8.kubernetes.client.internal.readiness.Readiness.isDeploymentReady;
+import static io.fabric8.kubernetes.client.readiness.Readiness.isDeploymentReady;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
