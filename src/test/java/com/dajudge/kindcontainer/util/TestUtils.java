@@ -14,12 +14,14 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.Callable;
 
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.UUID.randomUUID;
+import static org.awaitility.Awaitility.await;
 
 public final class TestUtils {
     private static final Random RANDOM = new Random();
@@ -28,12 +30,16 @@ public final class TestUtils {
     }
 
     public static String createNewNamespace(final KubernetesClient client) {
+        final String name = randomIdentifier();
         final Namespace namespace = new NamespaceBuilder()
                 .withNewMetadata()
-                .withName(randomIdentifier())
+                .withName(name)
                 .endMetadata()
                 .build();
         client.namespaces().create(namespace);
+        await("ServiceAccount 'default' in namespace " + name)
+                .ignoreExceptions()
+                .until(() -> client.serviceAccounts().inNamespace(namespace.getMetadata().getName()).withName("default").get(), Objects::nonNull);
         return namespace.getMetadata().getName();
     }
 
