@@ -17,10 +17,12 @@ import java.util.HashMap;
 import java.util.Objects;
 import java.util.Random;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
 
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.UUID.randomUUID;
+import static java.util.concurrent.TimeUnit.MINUTES;
 import static org.awaitility.Awaitility.await;
 
 public final class TestUtils {
@@ -39,6 +41,7 @@ public final class TestUtils {
         client.namespaces().create(namespace);
         await("ServiceAccount 'default' in namespace " + name)
                 .ignoreExceptions()
+                .timeout(1, MINUTES)
                 .until(() -> client.serviceAccounts().inNamespace(namespace.getMetadata().getName()).withName("default").get(), Objects::nonNull);
         return namespace.getMetadata().getName();
     }

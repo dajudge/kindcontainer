@@ -1,8 +1,6 @@
 package com.dajudge.kindcontainer;
 
-import com.dajudge.kindcontainer.client.TinyK8sClient;
 import com.dajudge.kindcontainer.client.model.v1.Node;
-import com.dajudge.kindcontainer.client.model.v1.NodeCondition;
 import com.dajudge.kindcontainer.client.model.v1.Taint;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.Bind;
@@ -13,14 +11,11 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
-import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -38,7 +33,6 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
 import static java.util.Comparator.comparing;
 import static java.util.Map.Entry.comparingByKey;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
 import static java.util.stream.Collectors.toList;
@@ -72,7 +66,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
     private String podSubnet = "10.244.0.0/16";
     private String serviceSubnet = "10.245.0.0/16";
     private List<Transferable> certs = new ArrayList<>();
-    private Duration startupTimeout = Duration.ofSeconds(300);
     private int minNodePort = 30000;
     private int maxNodePort = 32767;
 
@@ -141,17 +134,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
     }
 
     /**
-     * Sets the timeout applied when waiting for the Kubernetes node to become ready.
-     *
-     * @param startupTimeout the timeout
-     * @return <code>this</code>
-     */
-    public T withNodeReadyTimeout(final Duration startupTimeout) {
-        this.startupTimeout = startupTimeout;
-        return self();
-    }
-
-    /**
      * Adds a certificate to the container's trust anchors.
      *
      * @param cert the PEM encoded certificate
@@ -173,7 +155,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
                 installCni(params);
                 installStorage();
                 untaintNode();
-                waitForNodeReady();
             } catch (final Exception e) {
                 throw new RuntimeException("Failed to initialize node", e);
             }
@@ -386,36 +367,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
             } catch (final Exception e) {
                 LOG.warn("Failed to remove volume: {}", volumeName, e);
             }
-        }
-    }
-
-    private void waitForNodeReady() {
-        LOG.info("Waiting for a node to become ready...");
-        final Node readyNode = Awaitility.await("Ready node")
-                .pollInSameThread()
-                .pollDelay(0, SECONDS)
-                .pollInterval(100, MILLISECONDS)
-                .ignoreExceptions()
-                .timeout(startupTimeout)
-                .until(this::findReadyNode, Objects::nonNull);
-        LOG.info("Node ready: {}", readyNode.getMetadata().getName());
-    }
-
-    private Node findReadyNode() {
-        final Predicate<NodeCondition> isReadyStatus = cond ->
-                "Ready".equals(cond.getType()) && "True".equals(cond.getStatus());
-        final Predicate<Node> nodeIsReady = node -> node.getStatus().getConditions().stream()
-                .anyMatch(isReadyStatus);
-        final TinyK8sClient client = client();
-        try {
-            return client.v1().nodes().list().getItems().stream()
-                    .peek(it -> LOG.trace("{} -> {}", it.getMetadata().getName(), it.getStatus().getConditions()))
-                    .filter(nodeIsReady)
-                    .findAny()
-                    .orElse(null);
-        } catch (final Exception e) {
-            LOG.info("Failed to list ready nodes", e);
-            return null;
         }
     }
 

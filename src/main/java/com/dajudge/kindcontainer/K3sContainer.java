@@ -26,9 +26,7 @@ package com.dajudge.kindcontainer;
  * SOFTWARE.
  */
 
-import com.github.dockerjava.api.command.InspectContainerResponse;
 import org.testcontainers.containers.BindMode;
-import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.HashMap;
@@ -85,13 +83,6 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
     @Override
     public int getInternalPort() {
         return INTERNAL_API_SERVER_PORT;
-    }
-
-    @Override
-    protected void containerIsStarting(final InspectContainerResponse containerInfo) {
-        new LogMessageWaitStrategy().withRegEx(".*Node controller sync successful.*")
-                .waitUntilReady(this);
-        super.containerIsStarting(containerInfo);
     }
 
     @Override
