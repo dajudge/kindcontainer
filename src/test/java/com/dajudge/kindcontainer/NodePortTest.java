@@ -8,8 +8,11 @@ import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePortBuilder;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.kubeletContainers;
@@ -19,6 +22,8 @@ import static java.time.Duration.ofSeconds;
 import static org.awaitility.Awaitility.await;
 
 public class NodePortTest {
+
+    private static final Logger LOG = LoggerFactory.getLogger(NodePortTest.class);
 
     @TestFactory
     public Stream<DynamicTest> exposes_node_port() {
@@ -49,10 +54,18 @@ public class NodePortTest {
                                 .build())
                         .endSpec()
                         .build());
-                await("testpod")
-                        .timeout(ofSeconds(300))
-                        .until(TestUtils.http("http://localhost:" + k8s.getMappedPort(30000)));
-
+                try {
+                    await("testpod answers on node port")
+                            .timeout(1, TimeUnit.MINUTES)
+                            .until(TestUtils.http("http://localhost:" + k8s.getMappedPort(30000)));
+                } catch (final RuntimeException e) {
+                    final Pod currentPodState = client.pods()
+                            .inNamespace(pod.getMetadata().getNamespace())
+                            .withName(pod.getMetadata().getName())
+                            .get();
+                    LOG.info("Test pod state: {}", currentPodState);
+                    throw e;
+                }
             });
         });
     }
