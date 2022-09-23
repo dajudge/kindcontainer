@@ -41,6 +41,7 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
         put("/run", "");
         put("/var/run", "");
     }};
+    private final K3sContainerVersion version;
     private int minNodePort = 30000;
     private int maxNodePort = 32767;
 
@@ -49,11 +50,8 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
     }
 
     public K3sContainer(final K3sContainerVersion version) {
-        this(DockerImageName.parse(String.format("rancher/k3s:%s-k3s1", version.descriptor().getKubernetesVersion())));
-    }
-
-    public K3sContainer(final DockerImageName dockerImageName) {
-        super(dockerImageName);
+        super(DockerImageName.parse(String.format("rancher/k3s:%s-k3s1", version.descriptor().getKubernetesVersion())));
+        this.version = version;
         this
                 .withExposedPorts(INTERNAL_API_SERVER_PORT)
                 .withPrivilegedMode(true)
@@ -66,11 +64,18 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
     public void start() {
         this.withCommand(
                 "server",
-                "--no-deploy=traefik",
+                getDisabledComponentsCmdlineArg(),
                 "--tls-san=" + this.getHost(),
                 String.format("--service-node-port-range=%d-%d", minNodePort, maxNodePort)
         );
         super.start();
+    }
+
+    private String getDisabledComponentsCmdlineArg() {
+        if (new KubernetesVersionDescriptor(1, 25, 0).compareTo(version.descriptor()) <= 0) {
+            return "--disable=traefik";
+        }
+        return "--no-deploy=traefik";
     }
 
     @Override
