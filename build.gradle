@@ -24,7 +24,7 @@ apply from: "${rootProject.projectDir}/signing.gradle"
 apply from: "${rootProject.projectDir}/codegen.gradle"
 
 ext {
-    testcontainersVersion = "1.17.3"
+    testcontainersVersion = "1.17.4"
     junitVersion = "5.9.1"
 }
 
@@ -41,7 +41,7 @@ dependencies {
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine:$junitVersion"
-    testRuntimeOnly "ch.qos.logback:logback-classic:1.2.11"
+    testRuntimeOnly "ch.qos.logback:logback-classic:1.4.1"
 }
 
 java {
