@@ -9,7 +9,7 @@ jobs:
       - uses: actions/checkout@v2
       - id: set-matrix
         run: |
-          matrix=$( cat k8s-versions.json | jq '{version: [keys[] as $k | .[$k][] | .k8s as $v | "\($k) \($v)"]}' -c )
+          matrix=$( cat k8s-versions.json | jq '{version: [keys[] as $k | .[$k].versions[] | .k8s as $v | "\($k) \($v)"]}' -c )
           echo $matrix
           echo "::set-output name=matrix::$matrix"
 

@@ -6,8 +6,8 @@ import org.testcontainers.containers.GenericContainer;
 
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.KubernetesVersionEnum.latest;
@@ -64,7 +64,7 @@ public final class ContainerVersionHelpers {
         return Stream.of(KindContainerVersion.values())
                 .filter(isInContainerFilter(latest(KindContainerVersion.class)))
                 .map(version -> containerFactory(
-                        () -> new KindContainer<>(version),
+                        versionMod -> new KindContainer<>(versionMod.apply(version.toImageSpec())),
                         KindContainer.class.getSimpleName(),
                         version
                 ));
@@ -74,7 +74,7 @@ public final class ContainerVersionHelpers {
         return Stream.of(K3sContainerVersion.values())
                 .filter(isInContainerFilter(latest(K3sContainerVersion.class)))
                 .map(version -> containerFactory(
-                        () -> new K3sContainer<>(version),
+                        versionMod -> new K3sContainer<>(versionMod.apply(version.toImageSpec())),
                         K3sContainer.class.getSimpleName(),
                         version
                 ));
@@ -84,7 +84,7 @@ public final class ContainerVersionHelpers {
         return Stream.of(ApiServerContainerVersion.values())
                 .filter(isInContainerFilter(latest(ApiServerContainerVersion.class)))
                 .map(version -> containerFactory(
-                        () -> new ApiServerContainer<>(version),
+                        versionMod -> new ApiServerContainer<>(versionMod.apply(version.toImageSpec())),
                         ApiServerContainer.class.getSimpleName(),
                         version
                 ));
@@ -113,11 +113,11 @@ public final class ContainerVersionHelpers {
     }
 
     private static <T extends KubernetesContainer<?>> KubernetesTestPackage<T> containerFactory(
-            final Supplier<T> supplier,
+            final Function<VersionEnumModifier, T> factory,
             final String containerClassName,
             final KubernetesVersionEnum<?> version
     ) {
-        return new KubernetesTestPackage<>(containerClassName, supplier, version.descriptor());
+        return new KubernetesTestPackage<>(containerClassName, factory, version);
     }
 
     public static <T extends GenericContainer<?>> void runWithK8s(T container, final Consumer<T> consumer) {
@@ -129,15 +129,20 @@ public final class ContainerVersionHelpers {
         }
     }
 
+    private interface VersionEnumModifier {
+        <T extends KubernetesVersionEnum<T>> KubernetesImageSpec<T> apply(KubernetesImageSpec<T> e);
+    }
+
     public static final class KubernetesTestPackage<T extends KubernetesContainer<?>> {
         private final String containerClassName;
-        private final Supplier<? extends T> factory;
-        private final KubernetesVersionDescriptor version;
+        private final Function<VersionEnumModifier, ? extends T> factory;
+        private final KubernetesVersionEnum<?> version;
+        private String image;
 
         public KubernetesTestPackage(
                 final String containerClassName,
-                final Supplier<? extends T> factory,
-                final KubernetesVersionDescriptor version
+                final Function<VersionEnumModifier, ? extends T> factory,
+                final KubernetesVersionEnum<?> version
         ) {
             this.containerClassName = containerClassName;
             this.factory = factory;
@@ -145,7 +150,17 @@ public final class ContainerVersionHelpers {
         }
 
         public T newContainer() {
-            return factory.get();
+            return factory.apply(new VersionEnumModifier() {
+                @Override
+                public <E extends KubernetesVersionEnum<E>> KubernetesImageSpec<E> apply(final KubernetesImageSpec<E> e) {
+                    return image == null ? e : e.withImage(image);
+                }
+            });
+        }
+
+        public KubernetesTestPackage<T> withImage(final String image) {
+            this.image = image;
+            return this;
         }
 
         @Override
@@ -153,12 +168,12 @@ public final class ContainerVersionHelpers {
             return describe();
         }
 
-        public KubernetesVersionDescriptor version() {
+        public KubernetesVersionEnum<?> version() {
             return version;
         }
 
         public String describe() {
-            return format("%s %s", containerClassName, version.getKubernetesVersion());
+            return format("%s %s", containerClassName, version.descriptor().getKubernetesVersion());
         }
     }
 }

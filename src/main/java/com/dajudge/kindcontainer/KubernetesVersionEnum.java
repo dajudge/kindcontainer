@@ -7,9 +7,11 @@ import java.util.stream.Stream;
 import static java.util.Comparator.comparing;
 import static java.util.stream.Collectors.toList;
 
-public interface KubernetesVersionEnum<T extends KubernetesVersionEnum<T>> {
+public interface KubernetesVersionEnum<T extends KubernetesVersionEnum<T>> extends KubernetesImageSource<T> {
 
     KubernetesVersionDescriptor descriptor();
+
+    String defaultImageTemplate();
 
     /**
      * Returns the list of available versions in ascending order (earliest is first).
@@ -50,5 +52,15 @@ public interface KubernetesVersionEnum<T extends KubernetesVersionEnum<T>> {
      */
     static <T extends KubernetesVersionEnum<T>> T latest(final Class<T> versions) {
         return descending(versions).get(0);
+    }
+
+    @SuppressWarnings("unchecked")
+    default KubernetesImageSpec<T> toImageSpec() {
+        return new KubernetesImageSpec<>((T)this);
+    }
+
+    @Override
+    default KubernetesImageSpec<T> withImage(final String image) {
+        return toImageSpec().withImage(image);
     }
 }

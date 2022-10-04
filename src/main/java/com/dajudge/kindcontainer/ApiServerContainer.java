@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -24,7 +23,6 @@ import static java.time.Duration.ofMillis;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static java.util.Comparator.comparing;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
@@ -58,14 +56,21 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     public ApiServerContainer() {
         this(latest(ApiServerContainerVersion.class));
     }
-
     /**
      * Constructs a new <code>KindContainer</code>.
      *
      * @param version the Kubernetes version to run.
      */
     public ApiServerContainer(final ApiServerContainerVersion version) {
-        super(getDockerImage(version));
+        this(version.toImageSpec());
+    }
+    /**
+     * Constructs a new <code>KindContainer</code>.
+     *
+     * @param imageSpec the Kubernetes image spec to run.
+     */
+    public ApiServerContainer(final KubernetesImageSpec<ApiServerContainerVersion> imageSpec) {
+        super(imageSpec.getImage());
         final KeyStoreWrapper etcdClientKeyPair = etcdCa.newKeyPair("CN=API Server", emptyList());
         this
                 .withCreateContainerCmdModifier(this::createContainerCmdModifier)
@@ -85,10 +90,6 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .withCopyAsciiToContainer(etcdClientKeyPair.getCertificatePem(), ETCD_CLIENT_CERT)
                 .withCopyAsciiToContainer(etcdClientKeyPair.getPrivateKeyPem(), ETCD_CLIENT_KEY)
                 .withCopyAsciiToContainer(etcdCa.getCaKeyStore().getCertificatePem(), ETCD_CLIENT_CA);
-    }
-
-    private static DockerImageName getDockerImage(final ApiServerContainerVersion version) {
-        return DockerImageName.parse(format("k8s.gcr.io/kube-apiserver:%s", version.descriptor().getKubernetesVersion()));
     }
 
     @Override
