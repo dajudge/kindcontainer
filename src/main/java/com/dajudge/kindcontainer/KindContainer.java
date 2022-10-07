@@ -239,13 +239,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
         return Objects.equals(t.getEffect(), effect);
     }
 
-    private boolean hasControlPlaneTaint() {
-        if (version.descriptor().compareTo(new KubernetesVersionDescriptor(1, 24, 0)) < 0) {
-            return false;
-        }
-        return true;
-    }
-
     private void kubeadmInit(final Map<String, String> params) throws IOException, InterruptedException {
         try {
             final String kubeadmResource = getKubeadmResource();
