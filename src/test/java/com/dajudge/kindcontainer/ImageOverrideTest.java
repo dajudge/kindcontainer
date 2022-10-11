@@ -5,8 +5,11 @@ import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPack
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.HttpWaitStrategy;
+import org.testcontainers.utility.DockerImageName;
 import org.testcontainers.utility.MountableFile;
 
 import java.util.stream.Stream;
@@ -16,6 +19,8 @@ import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.allContaine
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ImageOverrideTest {
+    private static final Logger LOG = LoggerFactory.getLogger(ImageOverrideTest.class);
+
     private static final int NGINX_PORT = 8080;
 
 
@@ -26,20 +31,41 @@ public class ImageOverrideTest {
 
     public void assertUsesCustomDockerImage(final KubernetesTestPackage<? extends KubernetesContainer<?>> testPkg) {
         final KubernetesVersionEnum<?> version = testPkg.version();
-        final String registry = version.defaultImageTemplate()
-                .replaceAll("/.*", "");
+        final String imageTemplate = fullyQualified(version.defaultImageTemplate());
+        LOG.info("Image template: {}", imageTemplate);
+        final String registry = imageTemplate.replaceAll("/.*", "");
+        LOG.info("Registry: {}", registry);
         try (final GenericContainer<?> nginx = createNginx(registry)) {
             nginx.start();
-            final String image = version.defaultImageTemplate()
+            final String image = imageTemplate
                     .replace("${major}", String.valueOf(version.descriptor().getMajor()))
                     .replace("${minor}", String.valueOf(version.descriptor().getMinor()))
                     .replace("${patch}", String.valueOf(version.descriptor().getPatch()))
                     .replaceAll("^[^/]+", String.format("localhost:%d", nginx.getMappedPort(NGINX_PORT)));
+            LOG.info("Custom image: {}", image);
             try (final KubernetesContainer<?> k8s = testPkg.withImage(image).newContainer()) {
                 k8s.start();
                 assertTrue(k8s.getImage().get().startsWith(String.format("localhost:%d/", nginx.getMappedPort(NGINX_PORT))));
             }
         }
+    }
+
+    private String fullyQualified(final String image) {
+        final String dockerhub = "registry-1.docker.io";
+        if (image.matches("^.*/.*/.*$")) {
+            return image;
+        }
+        if (image.matches("^.*/.*$")) {
+            final String[] parts = image.split("/");
+            if (parts[0].contains(".")) {
+                return image;
+            }
+            return dockerhub + "/" + image;
+        }
+        if (image.matches("^.*$")) {
+            return dockerhub + "/library/" + image;
+        }
+        return image;
     }
 
     private static GenericContainer<?> createNginx(final String registryToProxy) {
@@ -48,6 +74,6 @@ public class ImageOverrideTest {
                 .withCopyToContainer(MountableFile.forClasspathResource("nginx-reverse-proxy.conf"), "/etc/nginx/templates/default.conf.template")
                 .withEnv("NGINX_PORT", String.format("%d", NGINX_PORT))
                 .withEnv("REGISTRY_TO_PROXY", registryToProxy)
-                .waitingFor(new HttpWaitStrategy().forPort(NGINX_PORT).forStatusCodeMatching(code -> code >= 200 && code < 400));
+                .waitingFor(new HttpWaitStrategy().forPort(NGINX_PORT).forStatusCodeMatching(code -> true));
     }
 }
