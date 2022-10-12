@@ -19,7 +19,7 @@ public class K8sVersionTest {
 
     private void assertStartsCorrectVersion(KubernetesTestPackage<? extends KubernetesContainer<?>> testPkg) {
         final KubernetesContainer<?> k8s = testPkg.newContainer();
-        final KubernetesVersionDescriptor version = testPkg.version();
+        final KubernetesVersionDescriptor version = testPkg.version().descriptor();
         try {
             k8s.start();
             runWithClient(k8s, client -> {

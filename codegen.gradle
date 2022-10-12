@@ -9,6 +9,7 @@ task generateVersionEnums {
         def versionsJson = new groovy.json.JsonSlurper().parse(versionDefFile) as Map<String, Object>
         versionsJson.keySet().forEach { container ->
             def enumName = "${container}Version"
+            def defaultImageTemplate = versionsJson.get(container).defaultImage
             def code = """package com.dajudge.kindcontainer;
 import com.dajudge.kindcontainer.KubernetesVersionDescriptor;
 import com.dajudge.kindcontainer.KubernetesVersionEnum;
@@ -17,7 +18,7 @@ import static java.lang.String.format;
 // generated from k8s-versions.json
 public enum ${enumName} implements KubernetesVersionEnum<${enumName}> {
 ${
-                versionsJson.get(container).collect({ version ->
+                versionsJson.get(container).versions.collect({ version ->
                     def versionParts = version.get("k8s").split("\\.")
                     def major = versionParts[0]
                     def minor = versionParts[1]
@@ -37,6 +38,11 @@ ${
     @Override
     public KubernetesVersionDescriptor descriptor() {
         return descriptor;
+    }
+    
+    @Override
+    public String defaultImageTemplate() {
+        return "${defaultImageTemplate}";
     }
     
     @Override

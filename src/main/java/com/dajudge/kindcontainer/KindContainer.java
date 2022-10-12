@@ -11,7 +11,6 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
-import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.util.*;
@@ -76,14 +75,24 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
         this(latest(KindContainerVersion.class));
     }
 
+
     /**
      * Constructs a new <code>KindContainer</code>.
      *
-     * @param version the Kubernetes version to run.
+     * @param version the Kubernetes version to use.
      */
     public KindContainer(final KindContainerVersion version) {
-        super(getDockerImage(version));
-        this.version = version;
+        this(version.toImageSpec());
+    }
+
+    /**
+     * Constructs a new <code>KindContainer</code>.
+     *
+     * @param imageSpec the Kubernetes image spec to use.
+     */
+    public KindContainer(final KubernetesImageSpec<KindContainerVersion> imageSpec) {
+        super(imageSpec.getImage());
+        this.version = imageSpec.getVersion();
         this.withStartupTimeout(ofSeconds(300))
                 .withLogConsumer(outputFrame -> {
                     if (PROVISIONING_TRIGGER_PATTERN.matcher(outputFrame.getUtf8String()).matches()) {
@@ -122,10 +131,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
         }
         super.withReuse(reuse);
         return self();
-    }
-
-    private static DockerImageName getDockerImage(final KindContainerVersion version) {
-        return DockerImageName.parse(format("kindest/node:%s", version.descriptor().getKubernetesVersion()));
     }
 
     @Override

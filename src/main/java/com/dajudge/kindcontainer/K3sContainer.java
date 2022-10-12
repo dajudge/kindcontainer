@@ -27,7 +27,6 @@ package com.dajudge.kindcontainer;
  */
 
 import org.testcontainers.containers.BindMode;
-import org.testcontainers.utility.DockerImageName;
 
 import java.util.HashMap;
 
@@ -50,8 +49,12 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
     }
 
     public K3sContainer(final K3sContainerVersion version) {
-        super(DockerImageName.parse(String.format("rancher/k3s:%s-k3s1", version.descriptor().getKubernetesVersion())));
-        this.version = version;
+        this(version.toImageSpec());
+    }
+
+    public K3sContainer(final KubernetesImageSpec<K3sContainerVersion> imageSpec) {
+        super(imageSpec.getImage());
+        this.version = imageSpec.getVersion();
         this
                 .withExposedPorts(INTERNAL_API_SERVER_PORT)
                 .withPrivilegedMode(true)
