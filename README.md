@@ -52,7 +52,7 @@ Add the Kindcontainer dependency:
         <dependency>
             <groupId>com.dajudge.kindcontainer</groupId>
             <artifactId>kindcontainer</artifactId>
-            <version>1.3.0</version>
+            <version>1.3.1</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -69,7 +69,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation "com.dajudge.kindcontainer:kindcontainer:1.3.0"
+    testImplementation "com.dajudge.kindcontainer:kindcontainer:1.3.1"
 }
 ```
 
