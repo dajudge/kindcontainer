@@ -22,7 +22,7 @@ import static java.util.Collections.emptyList;
 
 public class BaseSidecarContainer<T extends BaseSidecarContainer<T>> extends GenericContainer<T> {
     private static final Logger LOG = LoggerFactory.getLogger(BaseSidecarContainer.class);
-    private static final String KUBECONFIG_PATH = "/tmp/helmcontainer.kubeconfig";
+    private static final String KUBECONFIG_PATH = "/tmp/kindcontainer.kubeconfig";
     private final KubeConfigSupplier kubeConfigSupplier;
     private final Logger log;
     private boolean kubeConfigWritten = false;
