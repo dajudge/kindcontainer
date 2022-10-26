@@ -59,13 +59,19 @@ public class Response implements AutoCloseable {
         return bos.toByteArray();
     }
 
+    public String statusMessage() {
+        return wrapper.statusMessage;
+    }
+
     static class ResponseWrapper {
         private final int code;
+        private final String statusMessage;
         private final InputStream stream;
         private final HttpURLConnection conn;
 
-        ResponseWrapper(final int code, final InputStream stream, final HttpURLConnection conn) {
+        ResponseWrapper(final int code, final String statusMessage, final InputStream stream, final HttpURLConnection conn) {
             this.code = code;
+            this.statusMessage = statusMessage;
             this.stream = stream;
             this.conn = conn;
         }
