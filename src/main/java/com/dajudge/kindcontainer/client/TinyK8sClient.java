@@ -70,4 +70,7 @@ public class TinyK8sClient {
     public com.dajudge.kindcontainer.client.model.reflection.Fluent reflection() {
         return new com.dajudge.kindcontainer.client.model.reflection.Fluent(support);
     }
+    public com.dajudge.kindcontainer.client.model.admission.Fluent admissionRegistration() {
+        return new com.dajudge.kindcontainer.client.model.admission.Fluent(support);
+    }
 }
