@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -20,6 +21,7 @@ import static com.dajudge.kindcontainer.client.http.RequestBody.createFromJson;
 import static com.dajudge.kindcontainer.client.model.base.ResourceAction.ADDED;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.US_ASCII;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class HttpSupport {
     private static final Logger LOG = LoggerFactory.getLogger(HttpSupport.class);
@@ -114,11 +116,15 @@ public class HttpSupport {
             if (result.code() >= 400) {
                 try {
                     if (result.code() == 409) {
-                        errorSink.accept(new ConflictException(method, path, result.statusMessage()));
+                        errorSink.accept(new ConflictException(method, path, result));
                         return Watch.CLOSED;
                     }
                     if (result.code() == 404) {
-                        errorSink.accept(new NotFoundException(method, path, result.statusMessage()));
+                        errorSink.accept(new NotFoundException(method, path, result));
+                        return Watch.CLOSED;
+                    }
+                    if (result.code() == 422) {
+                        errorSink.accept(new UnprocessableEntityException(method, path, result));
                         return Watch.CLOSED;
                     }
                     final String bodyString = result.bodyAsString(US_ASCII);
