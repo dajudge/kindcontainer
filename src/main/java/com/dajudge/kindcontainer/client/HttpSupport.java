@@ -98,7 +98,8 @@ public class HttpSupport {
 
     private <I, T> Watch asyncReq(
             final String method,
-            final String path, final I requestBody,
+            final String path,
+            final I requestBody,
             final TypeReference<T> type,
             final Function<T, Boolean> sink,
             final Runnable closeCallback,
@@ -113,10 +114,11 @@ public class HttpSupport {
             if (result.code() >= 400) {
                 try {
                     if (result.code() == 409) {
-                        errorSink.accept(new ConflictException());
+                        errorSink.accept(new ConflictException(method, path, result.statusMessage()));
                         return Watch.CLOSED;
                     }
                     if (result.code() == 404) {
+                        errorSink.accept(new NotFoundException(method, path, result.statusMessage()));
                         return Watch.CLOSED;
                     }
                     final String bodyString = result.bodyAsString(US_ASCII);
@@ -159,8 +161,10 @@ public class HttpSupport {
                     requestCompleted.await();
                 }
             };
+        } catch (final TinyHttpClientRuntimeException e) {
+            throw e;
         } catch (final Exception e) {
-            throw new RuntimeException(e);
+            throw new RuntimeException("Unexpected error executing HTTP request", e);
         }
     }
 

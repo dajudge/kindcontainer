@@ -41,7 +41,11 @@ public class BaseResourceSupport<T extends WithMetadata, L extends ResourceList<
     }
 
     public Optional<T> find(final String name) {
-        return Optional.ofNullable(support.syncGet(namedPath(name), type));
+        try {
+            return Optional.of(support.syncGet(namedPath(name), type));
+        } catch (final NotFoundException e) {
+            return Optional.empty();
+        }
     }
 
     private String namedPath(String name) {
