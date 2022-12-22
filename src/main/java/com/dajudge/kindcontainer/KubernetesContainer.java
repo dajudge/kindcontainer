@@ -33,6 +33,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
     private Helm3Container<?> helm3;
     private KubectlContainer<?, T> kubectl;
+    private boolean postStartupExecutionsDone;
 
     public KubernetesContainer(final DockerImageName dockerImageName) {
         super(dockerImageName);
@@ -135,7 +136,15 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     protected T withPostStartupExecution(final ThrowingRunnable<Exception> runnable) {
-        postStartupExecutions.add(runnable);
+        if(postStartupExecutionsDone) {
+            try {
+                runnable.run();
+            } catch (final Exception e) {
+                throw new RuntimeException("Failed to execute runnable", e);
+            }
+        }else {
+            postStartupExecutions.add(runnable);
+        }
         return self();
     }
 
@@ -152,6 +161,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         if (!reused) {
             runPostAvailabilityExecutions();
         }
+        postStartupExecutionsDone = true;
     }
 
     protected TinyK8sClient client() {
