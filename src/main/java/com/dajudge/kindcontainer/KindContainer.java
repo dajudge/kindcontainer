@@ -10,13 +10,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.images.builder.Transferable;
-import org.testcontainers.shaded.com.google.common.annotations.VisibleForTesting;
 
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.KubernetesVersionEnum.latest;
 import static com.dajudge.kindcontainer.TemplateHelpers.templateContainerFile;
@@ -30,11 +28,9 @@ import static java.time.Duration.ofSeconds;
 import static java.util.Arrays.asList;
 import static java.util.Collections.emptyList;
 import static java.util.Collections.singletonList;
-import static java.util.Comparator.comparing;
 import static java.util.Map.Entry.comparingByKey;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static java.util.stream.Collectors.joining;
-import static java.util.stream.Collectors.toList;
 
 /**
  * A Testcontainer for testing against Kubernetes using
@@ -395,53 +391,5 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
         this.minNodePort = minPort;
         this.maxNodePort = maxPort;
         return self();
-    }
-
-    /**
-     * The available Kubernetes versions.
-     */
-    public enum Version {
-        VERSION_1_21_2(new KubernetesVersionDescriptor(1, 21, 2)),
-        VERSION_1_22_4(new KubernetesVersionDescriptor(1, 22, 4)),
-        VERSION_1_22_5(new KubernetesVersionDescriptor(1, 22, 5)),
-        VERSION_1_23_3(new KubernetesVersionDescriptor(1, 23, 3));
-
-        private static final Comparator<Version> COMPARE_ASCENDING = comparing(a -> a.descriptor);
-        private static final Comparator<Version> COMPARE_DESCENDING = COMPARE_ASCENDING.reversed();
-        @VisibleForTesting
-        private final KubernetesVersionDescriptor descriptor;
-
-        Version(final KubernetesVersionDescriptor descriptor) {
-            this.descriptor = descriptor;
-        }
-
-        /**
-         * Returns the latest supported version.
-         *
-         * @return the latest supported version.
-         */
-        public static Version getLatest() {
-            return descending().get(0);
-        }
-
-        /**
-         * Returns the list of available versions in descending order (latest is first).
-         *
-         * @return the list of available versions in descending order (latest is first).
-         */
-        public static List<Version> descending() {
-            return Stream.of(Version.values())
-                    .sorted(COMPARE_DESCENDING)
-                    .collect(toList());
-        }
-
-        public KubernetesVersionDescriptor getDescriptor() {
-            return descriptor;
-        }
-
-        @Override
-        public String toString() {
-            return format("%d.%d.%d", descriptor.getMajor(), descriptor.getMinor(), descriptor.getPatch());
-        }
     }
 }
