@@ -53,7 +53,7 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
     }
 
     public K3sContainer(final KubernetesImageSpec<K3sContainerVersion> imageSpec) {
-        super(imageSpec.getImage());
+        super(imageSpec);
         this.version = imageSpec.getVersion();
         this
                 .withExposedPorts(INTERNAL_API_SERVER_PORT)

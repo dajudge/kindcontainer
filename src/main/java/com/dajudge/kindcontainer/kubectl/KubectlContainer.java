@@ -5,7 +5,6 @@ import com.dajudge.kindcontainer.helm.KubeConfigSupplier;
 import org.testcontainers.utility.DockerImageName;
 
 public class KubectlContainer<T extends KubectlContainer<T, C>, C> extends BaseSidecarContainer<T> {
-    public static final DockerImageName DEFAULT_KUBECTL_IMAGE = DockerImageName.parse("bitnami/kubectl:1.21.9-debian-10-r10");
 
     public final ApplyFluent<KubectlContainer<T, C>, C> apply;
     public final DeleteFluent<KubectlContainer<T, C>> delete;

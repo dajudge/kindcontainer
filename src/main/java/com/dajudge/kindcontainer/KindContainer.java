@@ -91,7 +91,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
      * @param imageSpec the Kubernetes image spec to use.
      */
     public KindContainer(final KubernetesImageSpec<KindContainerVersion> imageSpec) {
-        super(imageSpec.getImage());
+        super(imageSpec);
         this.version = imageSpec.getVersion();
         this.withStartupTimeout(ofSeconds(300))
                 .withLogConsumer(outputFrame -> {

@@ -56,11 +56,21 @@ public interface KubernetesVersionEnum<T extends KubernetesVersionEnum<T>> exten
 
     @SuppressWarnings("unchecked")
     default KubernetesImageSpec<T> toImageSpec() {
-        return new KubernetesImageSpec<>((T)this);
+        return new KubernetesImageSpec<>((T) this);
     }
 
     @Override
     default KubernetesImageSpec<T> withImage(final String image) {
         return toImageSpec().withImage(image);
+    }
+
+    @Override
+    default KubernetesImageSpec<T> withKubectlImage(String kubectlImage) {
+        return toImageSpec().withKubectlImage(kubectlImage);
+    }
+
+    @Override
+    default KubernetesImageSpec<T> withHelm3Image(String helm3Image) {
+        return toImageSpec().withHelm3Image(helm3Image);
     }
 }

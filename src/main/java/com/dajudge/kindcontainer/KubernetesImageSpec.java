@@ -7,6 +7,9 @@ public class KubernetesImageSpec<T extends KubernetesVersionEnum<T>> implements 
 
     private String image;
 
+    private String kubectlImage = "bitnami/kubectl:1.21.9-debian-10-r10";
+    private String helm3Image = "alpine/helm:3.7.2";
+
     public KubernetesImageSpec(final T version) {
         this.version = version;
     }
@@ -14,6 +17,18 @@ public class KubernetesImageSpec<T extends KubernetesVersionEnum<T>> implements 
     @Override
     public KubernetesImageSpec<T> withImage(final String image) {
         this.image = image;
+        return this;
+    }
+
+    @Override
+    public KubernetesImageSpec<T> withKubectlImage(final String kubectlImage) {
+        this.kubectlImage = kubectlImage;
+        return this;
+    }
+
+    @Override
+    public KubernetesImageSpec<T> withHelm3Image(final String helm3Image) {
+        this.helm3Image = helm3Image;
         return this;
     }
 
@@ -26,5 +41,13 @@ public class KubernetesImageSpec<T extends KubernetesVersionEnum<T>> implements 
 
     public T getVersion() {
         return version;
+    }
+
+    public String getKubectlImage() {
+        return kubectlImage;
+    }
+
+    public String getHelm3Image() {
+        return helm3Image;
     }
 }

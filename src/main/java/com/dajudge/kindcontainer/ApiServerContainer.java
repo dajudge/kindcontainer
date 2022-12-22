@@ -70,7 +70,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
      * @param imageSpec the Kubernetes image spec to run.
      */
     public ApiServerContainer(final KubernetesImageSpec<ApiServerContainerVersion> imageSpec) {
-        super(imageSpec.getImage());
+        super(imageSpec);
         final KeyStoreWrapper etcdClientKeyPair = etcdCa.newKeyPair("CN=API Server", emptyList());
         this
                 .withCreateContainerCmdModifier(this::createContainerCmdModifier)

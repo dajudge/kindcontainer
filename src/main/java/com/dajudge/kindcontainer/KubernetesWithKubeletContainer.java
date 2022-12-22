@@ -19,8 +19,8 @@ public abstract class KubernetesWithKubeletContainer<T extends KubernetesWithKub
     private static final Logger LOG = LoggerFactory.getLogger(KubernetesWithKubeletContainer.class);
     private Duration startupTimeout = Duration.ofSeconds(300);
 
-    public KubernetesWithKubeletContainer(DockerImageName dockerImageName) {
-        super(dockerImageName);
+    KubernetesWithKubeletContainer(KubernetesImageSpec<?> imageSpec) {
+        super(imageSpec);
     }
 
     public abstract T withNodePortRange(final int minPort, final int maxPort);

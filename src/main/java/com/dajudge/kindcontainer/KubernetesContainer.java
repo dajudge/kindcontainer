@@ -18,10 +18,11 @@ import org.testcontainers.utility.DockerImageName;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.parseKubeConfig;
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.serializeKubeConfig;
-import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL_IMAGE;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -31,12 +32,24 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends BaseGenericContainer<T> {
     private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
-    private Helm3Container<?> helm3;
-    private KubectlContainer<?, T> kubectl;
+    private final LazyContainer<Helm3Container<?>> helm3;
+    private final LazyContainer<KubectlContainer<?, T>> kubectl;
     private boolean postStartupExecutionsDone;
 
-    public KubernetesContainer(final DockerImageName dockerImageName) {
-        super(dockerImageName);
+    KubernetesContainer(final KubernetesImageSpec<?> imageSpec) {
+        super(imageSpec.getImage());
+
+        final Supplier<Helm3Container<?>> helm3Supplier = () -> new Helm3Container<>(
+                DockerImageName.parse(imageSpec.getHelm3Image()),
+                this::getInternalKubeconfig);
+        this.helm3 = LazyContainer.of(helm3Supplier, this::getContainerId);
+
+        final Supplier<KubectlContainer<?, T>> kubectlSupplier = () -> new KubectlContainer<>(
+                DockerImageName.parse(imageSpec.getKubectlImage()),
+                this::getInternalKubeconfig,
+                self());
+        this.kubectl = LazyContainer.of(kubectlSupplier, this::getContainerId);
+
         this.withExposedPorts(getInternalPort())
                 .waitingFor(new WaitForPortsExternallyStrategy())
                 .withStartupTimeout(Duration.of(300, ChronoUnit.SECONDS));
@@ -82,21 +95,11 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     public synchronized Helm3Container<?> helm3() {
-        if (helm3 == null) {
-            helm3 = new Helm3Container<>(this::getInternalKubeconfig)
-                    .withNetworkMode("container:" + getContainerId());
-            helm3.start();
-        }
-        return helm3;
+        return helm3.get();
     }
 
     public synchronized KubectlContainer<?, T> kubectl() {
-        if (kubectl == null) {
-            kubectl = new KubectlContainer<>(DEFAULT_KUBECTL_IMAGE, this::getInternalKubeconfig, self())
-                    .withNetworkMode("container:" + getContainerId());
-            kubectl.start();
-        }
-        return kubectl;
+        return kubectl.get();
     }
 
     private void runPostAvailabilityExecutions() {
@@ -121,14 +124,10 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     @Override
     public void stop() {
         try {
-            if (helm3 != null) {
-                helm3.stop();
-            }
+            helm3.close();
         } finally {
             try {
-                if (kubectl != null) {
-                    kubectl.stop();
-                }
+                kubectl.close();
             } finally {
                 super.stop();
             }
@@ -136,13 +135,13 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     protected T withPostStartupExecution(final ThrowingRunnable<Exception> runnable) {
-        if(postStartupExecutionsDone) {
+        if (postStartupExecutionsDone) {
             try {
                 runnable.run();
             } catch (final Exception e) {
                 throw new RuntimeException("Failed to execute runnable", e);
             }
-        }else {
+        } else {
             postStartupExecutions.add(runnable);
         }
         return self();
@@ -263,5 +262,31 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
                         it -> it.map(Secret::getData).map(data -> data.get("token")).isPresent()
                 )
                 .orElseThrow(() -> new RuntimeException("No token found in secret: " + saName));
+    }
+
+    private interface LazyContainer<T> extends Supplier<T> {
+        void close();
+
+        static <T extends BaseSidecarContainer<?>> LazyContainer<T> of(final Supplier<T> supplier, final Supplier<String> containerIdSupplier) {
+            final AtomicReference<T> containerRef = new AtomicReference<>();
+            return new LazyContainer<T>() {
+                @Override
+                public void close() {
+                    if (containerRef.get() != null) {
+                        containerRef.get().close();
+                    }
+                }
+
+                @Override
+                public T get() {
+                    if (containerRef.get() == null) {
+                        @SuppressWarnings("unchecked") final T c = (T) supplier.get().withNetworkMode("container:" + containerIdSupplier.get());
+                        containerRef.set(c);
+                        containerRef.get().start();
+                    }
+                    return containerRef.get();
+                }
+            };
+        }
     }
 }
