@@ -23,7 +23,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.parseKubeConfig;
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.serializeKubeConfig;
-import static com.dajudge.kindcontainer.kubectl.KubectlContainer.DEFAULT_KUBECTL_IMAGE;
 import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
@@ -35,7 +34,8 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
     private final AtomicReference<DockerImageName> helm3Image = new AtomicReference<>(DockerImageName.parse("alpine/helm:3.7.2"));
     private final LazyContainer<Helm3Container<?>> helm3 = Helm3Container.lazy(helm3Image::get, this::getContainerId, this::getInternalKubeconfig);
-    private KubectlContainer<?, T> kubectl;
+    private final AtomicReference<DockerImageName> kubectlImage = new AtomicReference<>(DockerImageName.parse("bitnami/kubectl:1.21.9-debian-10-r10"));
+    private final LazyContainer<KubectlContainer<?, T>> kubectl = KubectlContainer.lazy(kubectlImage::get, this::getContainerId, this::getInternalKubeconfig, self());
     private boolean postStartupExecutionsDone;
 
     public KubernetesContainer(final DockerImageName dockerImageName) {
@@ -76,13 +76,18 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         return withPostStartupExecution(() -> consumer.accept(helm3()));
     }
 
-    public T withHelm3Image(final DockerImageName helm3Image) {
-        this.helm3Image.set(helm3Image);
+    public T withHelm3Image(final DockerImageName image) {
+        helm3Image.set(image);
         return self();
     }
 
     public T withKubectl(final ThrowingConsumer<KubectlContainer<?, T>, Exception> consumer) {
         return withPostStartupExecution(() -> consumer.accept(kubectl()));
+    }
+
+    public T withKubectlImage(final DockerImageName image) {
+        kubectlImage.set(image);
+        return self();
     }
 
     public T withKubeconfig(final ThrowingConsumer<String, Exception> consumer) {
@@ -94,12 +99,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     public synchronized KubectlContainer<?, T> kubectl() {
-        if (kubectl == null) {
-            kubectl = new KubectlContainer<>(DEFAULT_KUBECTL_IMAGE, this::getInternalKubeconfig, self())
-                    .withNetworkMode("container:" + getContainerId());
-            kubectl.start();
-        }
-        return kubectl;
+        return kubectl.get();
     }
 
     private void runPostAvailabilityExecutions() {
@@ -123,11 +123,9 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
 
     @Override
     public void stop() {
-        helm3.safeClose();
         try {
-            if (kubectl != null) {
-                kubectl.stop();
-            }
+            helm3.guardedClose();
+            kubectl.guardedClose();
         } finally {
             super.stop();
         }

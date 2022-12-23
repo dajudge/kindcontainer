@@ -1,8 +1,13 @@
 package com.dajudge.kindcontainer.kubectl;
 
 import com.dajudge.kindcontainer.BaseSidecarContainer;
+import com.dajudge.kindcontainer.KubernetesContainer;
+import com.dajudge.kindcontainer.Utils;
+import com.dajudge.kindcontainer.Utils.LazyContainer;
 import com.dajudge.kindcontainer.helm.KubeConfigSupplier;
 import org.testcontainers.utility.DockerImageName;
+
+import java.util.function.Supplier;
 
 public class KubectlContainer<T extends KubectlContainer<T, C>, C> extends BaseSidecarContainer<T> {
     public static final DockerImageName DEFAULT_KUBECTL_IMAGE = DockerImageName.parse("bitnami/kubectl:1.21.9-debian-10-r10");
@@ -13,7 +18,7 @@ public class KubectlContainer<T extends KubectlContainer<T, C>, C> extends BaseS
     public final CreateFluent<KubectlContainer<T, C>> create;
     public final LabelFluent<KubectlContainer<T, C>> label;
 
-    public KubectlContainer(
+    private KubectlContainer(
             final DockerImageName dockerImageName,
             final KubeConfigSupplier kubeConfigSupplier,
             final C k8s
@@ -41,5 +46,14 @@ public class KubectlContainer<T extends KubectlContainer<T, C>, C> extends BaseS
                 this::safeExecInContainer,
                 this
         );
+    }
+
+    public static <T extends KubernetesContainer<T>> LazyContainer<KubectlContainer<?, T>> lazy(
+            final Supplier<DockerImageName> image,
+            final Supplier<String> containerId,
+            final KubeConfigSupplier kubeconfig,
+            final T k8s
+    ) {
+        return LazyContainer.from(() -> new KubectlContainer<>(image.get(), kubeconfig, k8s).withNetworkMode("container:" + containerId.get()));
     }
 }
