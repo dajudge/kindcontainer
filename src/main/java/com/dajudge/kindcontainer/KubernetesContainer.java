@@ -1,5 +1,6 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.Utils.LazyContainer;
 import com.dajudge.kindcontainer.Utils.ThrowingConsumer;
 import com.dajudge.kindcontainer.Utils.ThrowingRunnable;
 import com.dajudge.kindcontainer.client.TinyK8sClient;
@@ -18,6 +19,7 @@ import org.testcontainers.utility.DockerImageName;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.parseKubeConfig;
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.serializeKubeConfig;
@@ -31,7 +33,8 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends BaseGenericContainer<T> {
     private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
-    private Helm3Container<?> helm3;
+    private final AtomicReference<DockerImageName> helm3Image = new AtomicReference<>(DockerImageName.parse("alpine/helm:3.7.2"));
+    private final LazyContainer<Helm3Container<?>> helm3 = Helm3Container.lazy(helm3Image::get, this::getContainerId, this::getInternalKubeconfig);
     private KubectlContainer<?, T> kubectl;
     private boolean postStartupExecutionsDone;
 
@@ -73,6 +76,11 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         return withPostStartupExecution(() -> consumer.accept(helm3()));
     }
 
+    public T withHelm3Image(final DockerImageName helm3Image) {
+        this.helm3Image.set(helm3Image);
+        return self();
+    }
+
     public T withKubectl(final ThrowingConsumer<KubectlContainer<?, T>, Exception> consumer) {
         return withPostStartupExecution(() -> consumer.accept(kubectl()));
     }
@@ -82,12 +90,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     public synchronized Helm3Container<?> helm3() {
-        if (helm3 == null) {
-            helm3 = new Helm3Container<>(this::getInternalKubeconfig)
-                    .withNetworkMode("container:" + getContainerId());
-            helm3.start();
-        }
-        return helm3;
+        return helm3.get();
     }
 
     public synchronized KubectlContainer<?, T> kubectl() {
@@ -120,29 +123,24 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
 
     @Override
     public void stop() {
+        helm3.safeClose();
         try {
-            if (helm3 != null) {
-                helm3.stop();
+            if (kubectl != null) {
+                kubectl.stop();
             }
         } finally {
-            try {
-                if (kubectl != null) {
-                    kubectl.stop();
-                }
-            } finally {
-                super.stop();
-            }
+            super.stop();
         }
     }
 
     protected T withPostStartupExecution(final ThrowingRunnable<Exception> runnable) {
-        if(postStartupExecutionsDone) {
+        if (postStartupExecutionsDone) {
             try {
                 runnable.run();
             } catch (final Exception e) {
                 throw new RuntimeException("Failed to execute runnable", e);
             }
-        }else {
+        } else {
             postStartupExecutions.add(runnable);
         }
         return self();
@@ -264,4 +262,5 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
                 )
                 .orElseThrow(() -> new RuntimeException("No token found in secret: " + saName));
     }
+
 }
