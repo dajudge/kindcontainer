@@ -2,12 +2,14 @@ package com.dajudge.kindcontainer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.GenericContainer;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 import static java.lang.System.currentTimeMillis;
@@ -16,6 +18,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 public final class Utils {
     private static final Logger LOG = LoggerFactory.getLogger(Utils.class);
+
     private Utils() {
     }
 
@@ -94,5 +97,43 @@ public final class Utils {
 
     public interface ThrowingSupplier<T, E extends Exception> {
         T get() throws E;
+    }
+
+    public interface LazyContainer<T> {
+        T get();
+
+        boolean isCreated();
+
+        void safeClose();
+
+        static <T extends GenericContainer<?>> LazyContainer<T> from(Supplier<T> supplier) {
+            final AtomicReference<T> containerRef = new AtomicReference<>();
+            return new LazyContainer<T>() {
+                @Override
+                public T get() {
+                    if (!isCreated()) {
+                        containerRef.set(supplier.get());
+                        containerRef.get().start();
+                    }
+                    return containerRef.get();
+                }
+
+                @Override
+                public boolean isCreated() {
+                    return containerRef.get() != null;
+                }
+
+                @Override
+                public void safeClose() {
+                    if (isCreated()) {
+                        try {
+                            get().stop();
+                        } catch (final Exception e) {
+                            LOG.error("Failed to stop container", e);
+                        }
+                    }
+                }
+            };
+        }
     }
 }
