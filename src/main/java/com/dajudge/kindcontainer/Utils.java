@@ -104,7 +104,7 @@ public final class Utils {
 
         boolean isCreated();
 
-        void safeClose();
+        void guardedClose();
 
         static <T extends GenericContainer<?>> LazyContainer<T> from(Supplier<T> supplier) {
             final AtomicReference<T> containerRef = new AtomicReference<>();
@@ -124,7 +124,7 @@ public final class Utils {
                 }
 
                 @Override
-                public void safeClose() {
+                public void guardedClose() {
                     if (isCreated()) {
                         try {
                             get().stop();
