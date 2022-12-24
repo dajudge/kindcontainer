@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
+import org.testcontainers.utility.DockerImageName;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -43,6 +44,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private final CertAuthority etcdCa = new CertAuthority(System::currentTimeMillis, "CN=etcd CA");
     private final CertAuthority apiServerCa = new CertAuthority(System::currentTimeMillis, "CN=API Server CA");
+    private DockerImageName etcdImage = DockerImageName.parse("k8s.gcr.io/etcd:3.4.13-0");
     private final KeyStoreWrapper apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
             new GeneralName(GeneralName.iPAddress, Utils.resolve(getHost())),
             new GeneralName(GeneralName.dNSName, "localhost"),
@@ -139,7 +141,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
-        etcd = new EtcdContainer(etcdCa, containerInfo.getId());
+        etcd = new EtcdContainer(etcdImage, etcdCa, containerInfo.getId());
         etcd.start();
         waitForApiServer();
         waitForDefaultNamespace();
@@ -190,6 +192,11 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     private String base64(final String str) {
         return Base64.getEncoder().encodeToString(str.getBytes(US_ASCII));
+    }
+
+    public T withEtcdImage(final DockerImageName image) {
+        this.etcdImage = image;
+        return self();
     }
 
     @Override

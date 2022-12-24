@@ -21,10 +21,9 @@ class EtcdContainer extends BaseGenericContainer<EtcdContainer> {
     private static final String SERVER_CACERTS_PATH = DOCKER_BASE_PATH + "/ca.crt";
     private static final String STARTUP_SIGNAL_PATH = DOCKER_BASE_PATH + "/startup";
     private static final String[] CMD = buildCommand();
-    private static final DockerImageName ETCD_IMAGE = DockerImageName.parse("k8s.gcr.io/etcd:3.4.13-0");
 
-    EtcdContainer(final CertAuthority etcdCa, final String targetContainerId) {
-        super(ETCD_IMAGE);
+    EtcdContainer(final DockerImageName image, final CertAuthority etcdCa, final String targetContainerId) {
+        super(image);
         final KeyStoreWrapper etcdKeypair = etcdCa.newKeyPair(
                 "CN=etcd",
                 singletonList(new GeneralName(GeneralName.dNSName, "localhost"))
