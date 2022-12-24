@@ -38,10 +38,11 @@ dependencies {
     testImplementation "org.mockito:mockito-core:4.10.0"
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
     testImplementation "org.junit.jupiter:junit-jupiter-params:$junitVersion"
+    testImplementation 'com.sparkjava:spark-core:2.9.4'
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine:$junitVersion"
-    testRuntimeOnly "ch.qos.logback:logback-classic:1.2.5"
+    testRuntimeOnly "ch.qos.logback:logback-classic:1.2.6"
 }
 
 java {

@@ -21,7 +21,7 @@ public final class ContainerVersionHelpers {
     }
 
     public interface KubernetesTest<T extends KubernetesContainer<?>> {
-        void run(final KubernetesTestPackage<? extends T> testPkg);
+        void run(final KubernetesTestPackage<? extends T> testPkg) throws Exception;
     }
 
     public static Stream<DynamicTest> allContainers(final KubernetesTest<? super KubernetesContainer<?>> test) {

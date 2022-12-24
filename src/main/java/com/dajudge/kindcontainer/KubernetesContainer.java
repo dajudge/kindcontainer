@@ -12,6 +12,9 @@ import com.dajudge.kindcontainer.client.model.v1.Secret;
 import com.dajudge.kindcontainer.client.model.v1.ServiceAccount;
 import com.dajudge.kindcontainer.helm.Helm3Container;
 import com.dajudge.kindcontainer.kubectl.KubectlContainer;
+import com.dajudge.kindcontainer.webhook.AdmissionControllerBuilder;
+import com.dajudge.kindcontainer.webhook.AdmissionControllerBuilderImpl;
+import com.dajudge.kindcontainer.webhook.AdmissionControllerManager;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import org.jetbrains.annotations.NotNull;
 import org.testcontainers.utility.DockerImageName;
@@ -20,6 +23,7 @@ import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Consumer;
 
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.parseKubeConfig;
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.serializeKubeConfig;
@@ -27,6 +31,7 @@ import static java.lang.String.format;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Arrays.asList;
 import static java.util.Base64.getDecoder;
+import static java.util.Collections.singletonList;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
@@ -36,7 +41,10 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     private final LazyContainer<Helm3Container<?>> helm3 = Helm3Container.lazy(helm3Image::get, this::getContainerId, this::getInternalKubeconfig);
     private final AtomicReference<DockerImageName> kubectlImage = new AtomicReference<>(DockerImageName.parse("bitnami/kubectl:1.21.9-debian-10-r10"));
     private final LazyContainer<KubectlContainer<?, T>> kubectl = KubectlContainer.lazy(kubectlImage::get, this::getContainerId, this::getInternalKubeconfig, self());
+    private final AdmissionControllerManager admissionControllerManager = new AdmissionControllerManager(this, 10000);
     private boolean postStartupExecutionsDone;
+    private HashSet<Integer> userExposedPorts = new HashSet<>();
+    private final HashSet<Integer> internalExposedPorts = new HashSet<>(singletonList(getInternalPort()));
 
     public KubernetesContainer(final DockerImageName dockerImageName) {
         super(dockerImageName);
@@ -94,6 +102,21 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         return withPostStartupExecution(() -> consumer.accept(getKubeconfig()));
     }
 
+    public T withAdmissionController(final ThrowingConsumer<AdmissionControllerBuilder, Exception> consumer) {
+        final List<Consumer<TinyK8sClient>> onContainerStarted = new ArrayList<>();
+        try {
+            consumer.accept(new AdmissionControllerBuilderImpl(admissionControllerManager, onContainerStarted::add));
+        } catch (final Exception e) {
+            throw new RuntimeException(e);
+        }
+        internalExposedPorts.add(admissionControllerManager.getExposedPort());
+        super.withExposedPorts(getAllExposedPorts());
+        return withPostStartupExecution(() -> {
+            final TinyK8sClient client = TinyK8sClient.fromKubeconfig(getKubeconfig());
+            onContainerStarted.forEach(f -> f.accept(client));
+        });
+    }
+
     public synchronized Helm3Container<?> helm3() {
         return helm3.get();
     }
@@ -126,9 +149,13 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
         try {
             helm3.guardedClose();
             kubectl.guardedClose();
+            if (admissionControllerManager != null) {
+                admissionControllerManager.stop();
+            }
         } finally {
             super.stop();
         }
+
     }
 
     protected T withPostStartupExecution(final ThrowingRunnable<Exception> runnable) {
@@ -146,9 +173,14 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
 
     @Override
     public T withExposedPorts(final Integer... ports) {
-        final HashSet<Integer> exposedPorts = new HashSet<>(asList(ports));
-        exposedPorts.add(getInternalPort());
-        return super.withExposedPorts(exposedPorts.toArray(new Integer[]{}));
+        userExposedPorts = new HashSet<>(asList(ports));
+        return super.withExposedPorts(getAllExposedPorts());
+    }
+
+    private Integer[] getAllExposedPorts() {
+        final HashSet<Integer> allExposedPorts = new HashSet<>(userExposedPorts);
+        allExposedPorts.addAll(internalExposedPorts);
+        return new ArrayList<>(allExposedPorts).toArray(new Integer[allExposedPorts.size()]);
     }
 
     @Override
@@ -158,6 +190,12 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
             runPostAvailabilityExecutions();
         }
         postStartupExecutionsDone = true;
+    }
+
+    @Override
+    protected void containerIsStarted(final InspectContainerResponse containerInfo, final boolean reused) {
+        super.containerIsStarted(containerInfo, reused);
+        admissionControllerManager.start();
     }
 
     protected TinyK8sClient client() {
