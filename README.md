@@ -7,6 +7,7 @@ A Java-based [Testcontainers](https://www.testcontainers.org/) container impleme
 Kubernetes clusters for integration testing.
 
 <!-- TOC -->
+  * [Kindcontainer](#kindcontainer)
 * [Container Flavors](#container-flavors)
 * [Usage](#usage)
   * [Add dependency](#add-dependency)
@@ -18,8 +19,13 @@ Kubernetes clusters for integration testing.
     * [With `ApiServerContainer`](#with-apiservercontainer)
 * [Quick guides](#quick-guides)
   * [Running different versions of Kubernetes](#running-different-versions-of-kubernetes)
-  * [Using custom docker images](#using-custom-docker-images)
   * [Using the `kubectl` and `helm` fluent APIs](#using-the-kubectl-and-helm-fluent-apis)
+  * [Using custom docker images](#using-custom-docker-images)
+    * [Kubernetes images](#kubernetes-images)
+    * [`kubectl` and `helm` images for fluent APIs](#kubectl-and-helm-images-for-fluent-apis)
+    * [`etcd` image for `ApiServerContainer`](#etcd-image-for-apiservercontainer)
+    * [`sshd` and `nginx` image for webhook testing](#sshd-and-nginx-image-for-webhook-testing)
+  * [Testing admission webhooks](#testing-admission-webhooks)
 * [Examples](#examples)
 <!-- TOC -->
 
@@ -52,7 +58,7 @@ Add the Kindcontainer dependency:
         <dependency>
             <groupId>com.dajudge.kindcontainer</groupId>
             <artifactId>kindcontainer</artifactId>
-            <version>1.3.1</version>
+            <version>1.4.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -69,11 +75,13 @@ repositories {
 }
 
 dependencies {
-    testImplementation "com.dajudge.kindcontainer:kindcontainer:1.3.1"
+    testImplementation "com.dajudge.kindcontainer:kindcontainer:1.4.0"
 }
 ```
 
 ## Use in JUnit 4 test
+
+Once you have the Kindcontainer dependency configured you can create JUnit test case easily.
 
 ### With `KindContainer`
 
@@ -153,15 +161,6 @@ analogous for the other two containers as well.
 KindContainer<?> container=new KindContainer<>(KindContainerVersion.VERSION_1_24_1);
 ```
 
-## Using custom docker images
-
-In some environments it might be necessary to use custom docker images for the Kubernetes containers. This can be
-by suffixing the kubernetes version you want to run with a call to `withImage()` like this:
-
-```java
-KindContainer<?> container=new KindContainer<>(KindContainerVersion.VERSION_1_24_1.withImage("my-registry.com/kind:1.24.1"));
-```
-
 ## Using the `kubectl` and `helm` fluent APIs
 
 Kindcontainer makes it easy to perform common tasks either during setup of the container
@@ -201,6 +200,91 @@ public class SomeHelmTest {
 
 The fluent APIs are far from complete, but they cover the most common use cases. If you're
 missing a command, feel free to open an issue or even better, a pull request.
+
+## Using custom docker images
+
+In some environments it might be necessary to use custom docker images for the containers Kindcontainer starts.
+
+___Attention___: You need to make sure that the images you are using are compatible with the images used by
+kindcontainer
+by default. These are the images used by Kindcontainer if you don't override them:
+
+|         Purpose         |            Image             |              Version               |
+|:-----------------------:|:----------------------------:|:----------------------------------:|
+|  `ApiServerContainer`   | `k8s.gcr.io/kube-apiserver`  |   `v${major}.${minor}.${patch}`    |
+|     `K3sContainer`      |        `rancher/k3s`         | `v${major}.${minor}.${patch}-k3s1` |
+|     `KindContainer`     |        `kindest/node`        |   `v${major}.${minor}.${patch}`    |
+|         `etcd`          |      `k8s.gcr.io/etcd`       |             `3.4.13-0`             |
+|    Fluent API `helm`    |        `alpine/helm`         |              `3.7.2`               |
+|  Fluent API `kubectl`   |      `bitnami/kubectl`       |       `1.21.9-debian-10-r10`       |
+|    Webhooks `nginx`     |           `nginx`            |              `1.23.3`              |
+| Webhooks OpenSSH Server | `linuxserver/openssh-server` |          `9.0_p1-r2-ls99`          |         
+
+### Kubernetes images
+
+You can customize the docker image of the Kubernetes container you're starting. This can be
+by suffixing the kubernetes version you want to run with a call to `withImage()` like this:
+
+```java
+KindContainer<?> container = new KindContainer<>(KindContainerVersion.VERSION_1_24_1.withImage("my-registry.com/kind:1.24.1"));
+```
+
+### `kubectl` and `helm` images for fluent APIs
+
+The fluent APIs for  `helm` and `kubectl` are implemented using support containers. To customize which images are being
+used to start those support containers you can use the `withKubectlImage()` and `withHelm3Image()` methods:
+
+```java
+K3sContainer<?> container = new K3sContainer<>()
+        .withKubectlImage(DockerImageName.parse("my-registry/kubectl:1.21.9-debian-10-r10"))
+        .withHelm3Image(DockerImageName.parse("my-registry/helm:3.7.2"));
+```
+
+### `etcd` image for `ApiServerContainer`
+
+`ApiServerContainer` has a hard dependency on `etcd` that's started in a separate container. To customize which image is
+being used to start that support container use method `withEtcdImage()`:
+
+```java
+ApiServerContainer<?> container = new ApiServerContainer<>().withEtcdImage(DockerImageName.parse("my-registry.com/etcd:.4.13-0"));
+```
+
+### `sshd` and `nginx` image for webhook testing
+
+Testing dynamic admission control webhooks requires support containers with `nginx` and `sshd`. To customize which
+images
+are being used to start those support containers use the `withNginxImage()` and `withOpensshServerImage()` methods.
+
+```java
+ApiServerContainer<?> container = new ApiServerContainer()
+        .withNginxImage(DockerImageName.parse("my-registry/nginx:1.23.3"))
+        .withOpensshServerImage(DockerImageName.parse("my-registry/openssh-server:9.0_p1-r2-ls99"));
+```
+
+## Testing admission webhooks
+You can use Kindcontainer to test your admission controllers.
+* Make sure you start your webhooks before you start the Kindcontainer
+* Start your webhooks without HTTPS/TLS
+* Make sure your webhooks listen at `http://localhost:<port>`
+* Register each webhook with `withAdmissionController()`
+
+Example:
+```java
+ApiServerContainer<?> container = new ApiServerContainer().withAdmissionController(admission -> {
+          admission.validating()    // use mutating() for a mutating admission controller
+            .withNewWebhook("validating.kindcontainer.dajudge.com")
+              .atPort(webhookPort)
+              .withNewRule()
+                .withApiGroups("")
+                .withApiVersions("v1")
+                .withOperations("CREATE", "UPDATE")
+                .withResources("configmaps")
+                .withScope("Namespaced")
+              .endRule()
+            .endWebhook()
+            .build();
+        })
+```
 
 # Examples
 
