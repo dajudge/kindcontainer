@@ -41,7 +41,8 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     private final LazyContainer<Helm3Container<?>> helm3 = Helm3Container.lazy(helm3Image::get, this::getContainerId, this::getInternalKubeconfig);
     private final AtomicReference<DockerImageName> kubectlImage = new AtomicReference<>(DockerImageName.parse("bitnami/kubectl:1.21.9-debian-10-r10"));
     private final LazyContainer<KubectlContainer<?, T>> kubectl = KubectlContainer.lazy(kubectlImage::get, this::getContainerId, this::getInternalKubeconfig, self());
-    private final AdmissionControllerManager admissionControllerManager = new AdmissionControllerManager(this, 10000);
+    private final AtomicReference<DockerImageName> nginxImage = new AtomicReference<>(DockerImageName.parse("nginx:1.23.3"));
+    private final AdmissionControllerManager admissionControllerManager = new AdmissionControllerManager(this, 10000, nginxImage::get);
     private boolean postStartupExecutionsDone;
     private HashSet<Integer> userExposedPorts = new HashSet<>();
     private final HashSet<Integer> internalExposedPorts = new HashSet<>(singletonList(getInternalPort()));
@@ -79,6 +80,11 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     }
 
     protected abstract String getKubeconfig(final String server);
+
+    public T withNginxImage(final DockerImageName image) {
+        nginxImage.set(image);
+        return self();
+    }
 
     public T withHelm3(final ThrowingConsumer<Helm3Container<?>, Exception> consumer) {
         return withPostStartupExecution(() -> consumer.accept(helm3()));
