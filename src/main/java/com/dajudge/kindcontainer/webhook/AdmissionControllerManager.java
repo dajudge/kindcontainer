@@ -11,11 +11,13 @@ import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.com.trilead.ssh2.Connection;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
+import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
@@ -27,15 +29,21 @@ public class AdmissionControllerManager {
     private final List<Webhook> webhooks = new ArrayList<>();
     private final KubernetesContainer<?> k8s;
     private final int internalWebhookPort;
+    private final Supplier<DockerImageName> nginxImage;
     private int nextTunnelPort;
     private GenericContainer<?> sshd;
     private GenericContainer<?> nginx;
     private Connection ssh;
 
-    public AdmissionControllerManager(final KubernetesContainer<?> k8s, final int basePort) {
+    public AdmissionControllerManager(
+            final KubernetesContainer<?> k8s,
+            final int basePort,
+            final Supplier<DockerImageName> nginx
+    ) {
         this.k8s = k8s;
         this.internalWebhookPort = basePort;
         this.nextTunnelPort = basePort + 1;
+        this.nginxImage = nginx;
     }
 
     public String mapWebhook(final String config, final String webhook, final int localPort) {
@@ -57,7 +65,7 @@ public class AdmissionControllerManager {
                 .withCopyToContainer(Transferable.of(sshdConfig), "/etc/ssh/sshd_config");
         final String nginxConfig = nginxConfig();
         LOG.debug("Admission controller reverse proxy nginx config: {}", nginxConfig);
-        nginx = new GenericContainer<>("nginx")
+        nginx = new GenericContainer<>(nginxImage.get())
                 .withNetworkMode("container:" + k8s.getContainerId())
                 .withCopyToContainer(Transferable.of(WEBHOOK_CERTS.getCertificatePem()), "/tmp/server.crt")
                 .withCopyToContainer(Transferable.of(WEBHOOK_CERTS.getPrivateKeyPem()), "/tmp/server.key")
@@ -83,7 +91,7 @@ public class AdmissionControllerManager {
 
     private Connection sshConnect(final KubernetesContainer<?> container) {
         return Awaitility.await().ignoreExceptions().until(() -> {
-            final Connection ssh = new Connection(container.getHost(), container.getMappedPort(2222));
+            final Connection ssh = new Connection(container.getHost(), container.getMappedPort(getExposedPort()));
             ssh.connect();
             return ssh;
         }, Objects::nonNull);
