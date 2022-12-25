@@ -42,7 +42,8 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     private final AtomicReference<DockerImageName> kubectlImage = new AtomicReference<>(DockerImageName.parse("bitnami/kubectl:1.21.9-debian-10-r10"));
     private final LazyContainer<KubectlContainer<?, T>> kubectl = KubectlContainer.lazy(kubectlImage::get, this::getContainerId, this::getInternalKubeconfig, self());
     private final AtomicReference<DockerImageName> nginxImage = new AtomicReference<>(DockerImageName.parse("nginx:1.23.3"));
-    private final AdmissionControllerManager admissionControllerManager = new AdmissionControllerManager(this, 10000, nginxImage::get);
+    private final AtomicReference<DockerImageName> opensshServerImage = new AtomicReference<>(DockerImageName.parse("linuxserver/openssh-server:9.0_p1-r2-ls99"));
+    private final AdmissionControllerManager admissionControllerManager = new AdmissionControllerManager(this, 10000, nginxImage::get, opensshServerImage::get);
     private boolean postStartupExecutionsDone;
     private HashSet<Integer> userExposedPorts = new HashSet<>();
     private final HashSet<Integer> internalExposedPorts = new HashSet<>(singletonList(getInternalPort()));
@@ -83,6 +84,11 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
 
     public T withNginxImage(final DockerImageName image) {
         nginxImage.set(image);
+        return self();
+    }
+
+    public T withOpensshServerImage(final DockerImageName image) {
+        opensshServerImage.set(image);
         return self();
     }
 
