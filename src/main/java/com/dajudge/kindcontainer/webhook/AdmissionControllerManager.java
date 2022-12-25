@@ -6,7 +6,6 @@ import com.dajudge.kindcontainer.pki.KeyStoreWrapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.images.builder.Transferable;
 import org.testcontainers.shaded.com.trilead.ssh2.Connection;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
@@ -30,6 +29,7 @@ public class AdmissionControllerManager {
     private final KubernetesContainer<?> k8s;
     private final int internalWebhookPort;
     private final Supplier<DockerImageName> nginxImage;
+    private final Supplier<DockerImageName> opensshServerImage;
     private int nextTunnelPort;
     private GenericContainer<?> sshd;
     private GenericContainer<?> nginx;
@@ -38,12 +38,14 @@ public class AdmissionControllerManager {
     public AdmissionControllerManager(
             final KubernetesContainer<?> k8s,
             final int basePort,
-            final Supplier<DockerImageName> nginx
+            final Supplier<DockerImageName> nginx,
+            final Supplier<DockerImageName> opensshServer
     ) {
         this.k8s = k8s;
         this.internalWebhookPort = basePort;
         this.nextTunnelPort = basePort + 1;
         this.nginxImage = nginx;
+        this.opensshServerImage = opensshServer;
     }
 
     public String mapWebhook(final String config, final String webhook, final int localPort) {
@@ -57,7 +59,7 @@ public class AdmissionControllerManager {
         }
         final String sshdConfig = sshdConfig();
         LOG.debug("Admission controller SSH tunnel config: {}", sshdConfig);
-        sshd = new GenericContainer<>("linuxserver/openssh-server")
+        sshd = new GenericContainer<>(opensshServerImage.get())
                 .withNetworkMode("container:" + k8s.getContainerId())
                 .withEnv("PASSWORD_ACCESS", "true")
                 .withEnv("USER_NAME", "t0ny")
