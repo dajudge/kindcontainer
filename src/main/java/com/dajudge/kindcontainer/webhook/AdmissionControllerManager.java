@@ -48,8 +48,8 @@ public class AdmissionControllerManager {
         this.opensshServerImage = opensshServer;
     }
 
-    public String mapWebhook(final String config, final String webhook, final int localPort) {
-        webhooks.add(new Webhook(config, webhook, localPort, nextTunnelPort++));
+    public String mapWebhook(final String config, final String webhook, final int localPort, final String path) {
+        webhooks.add(new Webhook(config, webhook, localPort, nextTunnelPort++, path));
         return String.format("https://localhost:%d/webhook/%s/%s", internalWebhookPort, config, webhook);
     }
 
@@ -123,7 +123,7 @@ public class AdmissionControllerManager {
             final String path = "/webhook/" + webhook.config + "/" + webhook.webhook;
             lines.addAll(asList(
                     "    location " + path + " {",
-                    "        rewrite " + path + "(.*) /$1  break;",
+                    "        rewrite " + path + "(.*) " + webhook.path + "$1  break;",
                     "        proxy_pass http://localhost:" + webhook.tunnelPort + ";",
                     "    }"
             ));
@@ -148,12 +148,14 @@ public class AdmissionControllerManager {
         private final String webhook;
         private final int localPort;
         private final int tunnelPort;
+        private final String path;
 
-        private Webhook(final String config, final String webhook, final int localPort, final int tunnelPort) {
+        private Webhook(final String config, final String webhook, final int localPort, final int tunnelPort, final String path) {
             this.config = config;
             this.webhook = webhook;
             this.localPort = localPort;
             this.tunnelPort = tunnelPort;
+            this.path = path;
         }
     }
 }

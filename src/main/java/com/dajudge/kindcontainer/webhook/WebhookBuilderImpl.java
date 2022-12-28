@@ -21,6 +21,7 @@ class WebhookBuilderImpl<R> implements WebhookBuilder<R> {
     private Integer timeoutSeconds;
     private String failurePolicy;
     private String matchPolicy;
+    private String path = "/";
 
     public WebhookBuilderImpl(final String name, final R parent) {
         this.name = name;
@@ -30,6 +31,12 @@ class WebhookBuilderImpl<R> implements WebhookBuilder<R> {
     @Override
     public WebhookBuilderImpl<R> atPort(final int port) {
         this.port = port;
+        return this;
+    }
+
+    @Override
+    public WebhookBuilder<R> withPath(String path) {
+        this.path = path;
         return this;
     }
 
@@ -76,7 +83,7 @@ class WebhookBuilderImpl<R> implements WebhookBuilder<R> {
     }
 
     private WebhookClientConfig toClientConfig(final AdmissionControllerManager manager, final String configName) {
-        final String webhookUrl = manager.mapWebhook(configName, name, port);
+        final String webhookUrl = manager.mapWebhook(configName, name, port, path);
         final WebhookClientConfig clientConfig = new WebhookClientConfig();
         clientConfig.setCaBundle(Base64.getEncoder().encodeToString(manager.getCaCertPem().getBytes(UTF_8)));
         clientConfig.setUrl(webhookUrl);

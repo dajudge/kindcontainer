@@ -10,6 +10,11 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 public class MutatingWebhookServer extends AbstractWebhookServer {
 
     private static final String PATCH = "[{\"op\": \"add\", \"path\": \"/metadata/annotations\", \"value\": {\"mutated\": \"true\"}}]";
+    private static final String WEBHOOK_PATH = "/mutate";
+
+    public MutatingWebhookServer() {
+        super(WEBHOOK_PATH);
+    }
 
     @Override
     protected AdmissionReview review(final AdmissionReview review) {
@@ -28,6 +33,7 @@ public class MutatingWebhookServer extends AbstractWebhookServer {
         admission.mutating()
                 .withNewWebhook("mutating.kindcontainer.dajudge.com")
                 .atPort(getPort())
+                .withPath(WEBHOOK_PATH)
                 .withNewNamespaceSelector()
                 .addMatchLabel("mutate", "true")
                 .endLabelSelector()
