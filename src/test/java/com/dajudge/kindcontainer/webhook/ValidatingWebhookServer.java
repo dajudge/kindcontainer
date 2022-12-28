@@ -7,6 +7,12 @@ import io.fabric8.kubernetes.api.model.admission.v1.AdmissionReviewBuilder;
 
 public class ValidatingWebhookServer extends AbstractWebhookServer {
 
+    public static final String WEBHOOK_PATH = "/validate";
+
+    public ValidatingWebhookServer() {
+        super(WEBHOOK_PATH);
+    }
+
     @Override
     protected AdmissionReview review(final AdmissionReview review) {
         final ConfigMap cm = (ConfigMap) review.getRequest().getObject();
@@ -37,6 +43,7 @@ public class ValidatingWebhookServer extends AbstractWebhookServer {
         admission.validating()
                 .withNewWebhook("validating.kindcontainer.dajudge.com")
                 .atPort(getPort())
+                .withPath(WEBHOOK_PATH)
                 .withNewRule()
                 .withApiGroups("")
                 .withApiVersions("v1")

@@ -3,7 +3,6 @@ package com.dajudge.kindcontainer.webhook;
 import com.dajudge.kindcontainer.client.http.Response;
 import com.dajudge.kindcontainer.client.http.TinyHttpClient;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.admission.v1.AdmissionReview;
 import io.fabric8.kubernetes.api.model.admission.v1.AdmissionReviewBuilder;
@@ -20,15 +19,20 @@ public abstract class AbstractWebhookServer implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractWebhookServer.class);
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+    private final String path;
     private Service service;
     private int port;
+
+    protected AbstractWebhookServer(String path) {
+        this.path = path;
+    }
 
     protected abstract AdmissionReview review(final AdmissionReview review);
 
     public AbstractWebhookServer start() {
         LOG.info("Starting webhook server: {}", getClass().getSimpleName());
         service = Service.ignite().port(0);
-        service.post("/", (req, res) -> {
+        service.post(path, (req, res) -> {
             final AdmissionReview review = OBJECT_MAPPER.readValue(req.body(), AdmissionReview.class);
             final HasMetadata object = (HasMetadata) review.getRequest().getObject();
             if(!isTestResource(object)) {
