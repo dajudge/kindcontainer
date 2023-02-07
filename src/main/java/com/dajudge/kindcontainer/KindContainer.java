@@ -98,13 +98,19 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
                 .withCreateContainerCmdModifier(cmd -> {
                     final Volume varVolume = new Volume("/var/lib/containerd");
                     final Volume modVolume = new Volume("/lib/modules");
+
+                    final List<Volume> volumes = new ArrayList<>(asList(cmd.getVolumes() == null ? new Volume[]{} : cmd.getVolumes()));
+                    volumes.add(varVolume);
+                    volumes.add(modVolume);
+
+                    final List<Bind> binds = new ArrayList<>(asList(cmd.getBinds() == null ? new Bind[]{} : cmd.getBinds()));
+                    binds.add(new Bind(volumeName, varVolume, true));
+                    binds.add(new Bind("/lib/modules", modVolume, ro));
+
                     cmd.withEntrypoint("/usr/local/bin/entrypoint", "/sbin/init")
-                            .withVolumes(varVolume)
+                            .withVolumes(volumes)
                             .withTty(true)
-                            .withBinds(
-                                    new Bind(volumeName, varVolume, true),
-                                    new Bind("/lib/modules", modVolume, ro)
-                            );
+                            .withBinds(binds);
 
                 })
                 .withEnv("KUBECONFIG", "/etc/kubernetes/admin.conf")
