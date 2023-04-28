@@ -72,7 +72,7 @@
     ]
   },
   "ApiServerContainer": {
-    "defaultImage": "k8s.gcr.io/kube-apiserver:v${major}.${minor}.${patch}",
+    "defaultImage": "registry.k8s.io/kube-apiserver:v${major}.${minor}.${patch}",
     "versions": [
       {
         "deprecated": true,
