@@ -14,7 +14,6 @@ import org.testcontainers.images.builder.Transferable;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
-import java.util.regex.Pattern;
 
 import static com.dajudge.kindcontainer.KubernetesVersionEnum.latest;
 import static com.dajudge.kindcontainer.TemplateHelpers.templateContainerFile;
@@ -44,7 +43,6 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
     private static final String CONTAINTER_WORKDIR = "/kindcontainer";
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private static final String CACERTS_INSTALL_DIR = "/usr/local/share/ca-certificates";
-    private static final Pattern PROVISIONING_TRIGGER_PATTERN = Pattern.compile(".*Reached target .*Multi-User System.*");
     private static final Map<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
         put("/run", "rw");
         put("/tmp", "rw");
@@ -89,10 +87,15 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
     public KindContainer(final KubernetesImageSpec<KindContainerVersion> imageSpec) {
         super(imageSpec.getImage());
         this.version = imageSpec.getVersion();
+        final StringBuffer log = new StringBuffer();
         this.withStartupTimeout(ofSeconds(300))
                 .withLogConsumer(outputFrame -> {
-                    if (PROVISIONING_TRIGGER_PATTERN.matcher(outputFrame.getUtf8String()).matches()) {
-                        provisioningLatch.countDown();
+                    if (provisioningLatch.getCount() != 0) {
+                        log.append(outputFrame.getUtf8String());
+                        if (log.toString().contains("Reached target Multi-User System.")) {
+                            log.append(outputFrame.getUtf8String());
+                            provisioningLatch.countDown();
+                        }
                     }
                 })
                 .withCreateContainerCmdModifier(cmd -> {
