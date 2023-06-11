@@ -209,16 +209,16 @@ ___Attention___: You need to make sure that the images you are using are compati
 kindcontainer
 by default. These are the images used by Kindcontainer if you don't override them:
 
-|         Purpose         |            Image             |              Version               |
-|:-----------------------:|:----------------------------:|:----------------------------------:|
-|  `ApiServerContainer`   | `k8s.gcr.io/kube-apiserver`  |   `v${major}.${minor}.${patch}`    |
-|     `K3sContainer`      |        `rancher/k3s`         | `v${major}.${minor}.${patch}-k3s1` |
-|     `KindContainer`     |        `kindest/node`        |   `v${major}.${minor}.${patch}`    |
-|         `etcd`          |      `k8s.gcr.io/etcd`       |             `3.4.13-0`             |
-|    Fluent API `helm`    |        `alpine/helm`         |              `3.7.2`               |
-|  Fluent API `kubectl`   |      `bitnami/kubectl`       |       `1.21.9-debian-10-r10`       |
-|    Webhooks `nginx`     |           `nginx`            |              `1.23.3`              |
-| Webhooks OpenSSH Server | `linuxserver/openssh-server` |          `9.0_p1-r2-ls99`          |         
+|         Purpose         |              Image               |              Version               |
+|:-----------------------:|:--------------------------------:|:----------------------------------:|
+|  `ApiServerContainer`   | `registry.k8s.io/kube-apiserver` |   `v${major}.${minor}.${patch}`    |
+|     `K3sContainer`      |          `rancher/k3s`           | `v${major}.${minor}.${patch}-k3s1` |
+|     `KindContainer`     |          `kindest/node`          |   `v${major}.${minor}.${patch}`    |
+|         `etcd`          |      `registry.k8s.io/etcd`      |             `3.4.13-0`             |
+|    Fluent API `helm`    |          `alpine/helm`           |              `3.7.2`               |
+|  Fluent API `kubectl`   |        `bitnami/kubectl`         |       `1.21.9-debian-10-r10`       |
+|    Webhooks `nginx`     |             `nginx`              |              `1.23.3`              |
+| Webhooks OpenSSH Server |   `linuxserver/openssh-server`   |          `9.0_p1-r2-ls99`          |         
 
 ### Kubernetes images
 
