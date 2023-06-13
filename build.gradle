@@ -42,7 +42,7 @@ dependencies {
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine:$junitVersion"
-    testRuntimeOnly "ch.qos.logback:logback-classic:1.2.6"
+    testRuntimeOnly "ch.qos.logback:logback-classic:1.4.8"
 }
 
 java {
