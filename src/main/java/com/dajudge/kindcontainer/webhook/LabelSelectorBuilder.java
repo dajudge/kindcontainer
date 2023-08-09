@@ -4,11 +4,11 @@ import java.util.Map;
 
 public interface LabelSelectorBuilder<P> {
 
-    LabelSelectorBuilderImpl<P> addMatchLabel(String key, String value);
+    LabelSelectorBuilder<P> addMatchLabel(String key, String value);
 
-    LabelSelectorBuilderImpl<P> addMatchLabels(Map<String, String> matchLabels);
+    LabelSelectorBuilder<P> addMatchLabels(Map<String, String> matchLabels);
 
-    LabelSelectorRequirementBuilderImpl<LabelSelectorBuilder<P>> withNewMatchExpression();
+    LabelSelectorRequirementBuilder<LabelSelectorBuilder<P>> withNewMatchExpression();
 
     P endLabelSelector();
 }
