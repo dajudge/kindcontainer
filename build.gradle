@@ -24,7 +24,7 @@ apply from: "${rootProject.projectDir}/signing.gradle"
 apply from: "${rootProject.projectDir}/codegen.gradle"
 
 ext {
-    testcontainersVersion = "1.18.3"
+    testcontainersVersion = "1.19.1"
     junitVersion = "5.10.0"
 }
 
