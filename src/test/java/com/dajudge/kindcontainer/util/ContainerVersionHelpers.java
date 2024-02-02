@@ -99,7 +99,7 @@ public final class ContainerVersionHelpers {
 
     private static <T extends KubernetesVersionEnum<?>> Predicate<T> isInContainerFilter(final T defaultVersion) {
         assert defaultVersion != null;
-        return Optional.ofNullable(System.getenv("CONTAINER_FILTER"))
+        return Optional.ofNullable(getEnv("CONTAINER_FILTER"))
                 .map(filter -> (Predicate<T>) version -> {
                     final String[] parts = filter.split(" ", 2);
                     final String container = parts[0];
@@ -110,6 +110,12 @@ public final class ContainerVersionHelpers {
                     return format("v%s", versionString).equals(version.descriptor().getKubernetesVersion());
                 })
                 .orElse(version -> version.descriptor().equals(version.descriptor()));
+    }
+
+    private static String getEnv(String key) {
+        String value = System.getenv(key);
+        // Fix for https://github.com/dajudge/kindcontainer/issues/262
+        return "null".equals(value) ? null : value;
     }
 
     private static <T extends KubernetesContainer<?>> KubernetesTestPackage<T> containerFactory(
