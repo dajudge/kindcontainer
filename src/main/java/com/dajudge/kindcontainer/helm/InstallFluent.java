@@ -17,7 +17,9 @@ public class InstallFluent<P> {
     private final P parent;
     private String namespace;
     private boolean createNamespace;
-    private Map<String, String> params = new HashMap<>();
+    private final Map<String, String> params = new HashMap<>();
+
+    private final List<String> values = new ArrayList<>();
 
     public InstallFluent(final ExecInContainer c, final P parent) {
         this.c = c;
@@ -26,6 +28,11 @@ public class InstallFluent<P> {
 
     public InstallFluent<P> set(final String key, final String value) {
         params.put(key, value);
+        return this;
+    }
+
+    public InstallFluent<P> values(final String path) {
+        values.add(path);
         return this;
     }
 
@@ -53,10 +60,11 @@ public class InstallFluent<P> {
             if (createNamespace) {
                 cmdline.add("--create-namespace");
             }
-            params.forEach((k, v) -> {
-                cmdline.addAll(asList("--set", String.format("%s=%s", k, v)));
-            });
+            params.forEach((k, v) -> cmdline.addAll(asList("--set", String.format("%s=%s", k, v))));
             cmdline.addAll(asList(releaseName, chart));
+            values.forEach(v -> {
+                cmdline.addAll(asList("-f", v));
+            });
             c.safeExecInContainer(cmdline.toArray(new String[]{}));
             return parent;
         } finally {
