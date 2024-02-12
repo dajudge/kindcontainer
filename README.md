@@ -100,7 +100,7 @@ public class SomeKindTest {
 }
 ```
 
-Look [here](src/test/java/com/dajudge/kindcontainer/readme/SomeKindTest.java) for the reference test.
+Look [here](src/test/java/com/dajudge/kindcontainer/readme/junit4/SomeKindTest.java) for the reference test.
 
 ### With `K3sContainer`
 
@@ -119,7 +119,7 @@ public class SomeK3sTest {
 }
 ```
 
-Look [here](src/test/java/com/dajudge/kindcontainer/readme/SomeK3sTest.java) for the reference test.
+Look [here](src/test/java/com/dajudge/kindcontainer/readme/junit4/SomeK3sTest.java) for the reference test.
 
 ### With `ApiServerContainer`
 
@@ -144,7 +144,7 @@ public class SomeApiServerTest {
 }
 ```
 
-Look [here](src/test/java/com/dajudge/kindcontainer/readme/SomeApiServerTest.java) for the reference test.
+Look [here](src/test/java/com/dajudge/kindcontainer/readme/junit4/SomeApiServerTest.java) for the reference test.
 
 # Quick guides
 
