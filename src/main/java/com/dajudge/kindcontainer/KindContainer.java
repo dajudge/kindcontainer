@@ -6,6 +6,7 @@ import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.Bind;
 import com.github.dockerjava.api.model.ContainerNetwork;
 import com.github.dockerjava.api.model.Volume;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.DockerClientFactory;
@@ -88,11 +89,12 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
         super(imageSpec.getImage());
         this.version = imageSpec.getVersion();
         final StringBuffer log = new StringBuffer();
+        final String startupMessage = getStartupMessage();
         this.withStartupTimeout(ofSeconds(300))
                 .withLogConsumer(outputFrame -> {
                     if (provisioningLatch.getCount() != 0) {
                         log.append(outputFrame.getUtf8String());
-                        if (log.toString().contains("Reached target Multi-User System.")) {
+                        if (log.toString().contains(startupMessage)) {
                             log.append(outputFrame.getUtf8String());
                             provisioningLatch.countDown();
                         }
@@ -119,6 +121,13 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
                 .withEnv("KUBECONFIG", "/etc/kubernetes/admin.conf")
                 .withPrivilegedMode(true)
                 .withTmpFs(TMP_FILESYSTEMS);
+    }
+
+    @NotNull
+    private String getStartupMessage() {
+        return version.descriptor().getMajor() >= 1 && version.descriptor().getMinor() >= 29
+                ? "Reached target multi-user.target"
+                : "Reached target Multi-User System.";
     }
 
     @Override
