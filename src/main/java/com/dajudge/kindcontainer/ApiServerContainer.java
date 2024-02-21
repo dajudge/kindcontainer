@@ -44,7 +44,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     private static final int INTERNAL_API_SERVER_PORT = 6443;
     private final CertAuthority etcdCa = new CertAuthority(System::currentTimeMillis, "CN=etcd CA");
     private final CertAuthority apiServerCa = new CertAuthority(System::currentTimeMillis, "CN=API Server CA");
-    private DockerImageName etcdImage = DockerImageName.parse("registry.k8s.io/etcd:3.4.13-0");
+    private DockerImageName etcdImage = DockerImageName.parse("registry.k8s.io/etcd:3.5.12-0");
     private final KeyStoreWrapper apiServerKeyPair = apiServerCa.newKeyPair("O=system:masters,CN=kubernetes-admin", asList(
             new GeneralName(GeneralName.iPAddress, Utils.resolve(getHost())),
             new GeneralName(GeneralName.dNSName, "localhost"),
