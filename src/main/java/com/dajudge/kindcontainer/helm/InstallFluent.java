@@ -4,12 +4,10 @@ import com.dajudge.kindcontainer.BaseSidecarContainer.ExecInContainer;
 import com.dajudge.kindcontainer.exception.ExecutionException;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static java.util.Arrays.asList;
+import static java.util.Objects.requireNonNull;
 
 public class InstallFluent<P> {
 
@@ -17,6 +15,7 @@ public class InstallFluent<P> {
     private final P parent;
     private String namespace;
     private boolean createNamespace;
+    private String version;
     private final Map<String, String> params = new HashMap<>();
 
     private final List<String> values = new ArrayList<>();
@@ -51,6 +50,11 @@ public class InstallFluent<P> {
         return createNamespace(true);
     }
 
+    public InstallFluent<P> version(final String version) {
+        this.version = requireNonNull(version, "version cannot be null");
+        return this;
+    }
+
     public P run(final String releaseName, final String chart) throws IOException, InterruptedException, ExecutionException {
         try {
             final List<String> cmdline = new ArrayList<>(asList("helm", "install"));
@@ -59,6 +63,9 @@ public class InstallFluent<P> {
             }
             if (createNamespace) {
                 cmdline.add("--create-namespace");
+            }
+            if (version != null) {
+                cmdline.addAll(asList("--version", version));
             }
             params.forEach((k, v) -> cmdline.addAll(asList("--set", String.format("%s=%s", k, v))));
             cmdline.addAll(asList(releaseName, chart));
@@ -70,6 +77,7 @@ public class InstallFluent<P> {
         } finally {
             createNamespace = false;
             namespace = null;
+            version = null;
             params.clear();
         }
     }
