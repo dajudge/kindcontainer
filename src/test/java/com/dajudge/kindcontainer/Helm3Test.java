@@ -34,6 +34,7 @@ public class Helm3Test {
                     .namespace("hello")
                     .createNamespace()
                     .values("/apps/values.yaml")
+                    .version("0.1.0")
                     .run("hello", "examples/hello-world");
         });
     }
