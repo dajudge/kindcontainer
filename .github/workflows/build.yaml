@@ -16,7 +16,7 @@ jobs:
       - id: set-matrix
         run: |
           matrix=$( cat k8s-versions.json | jq '{version: [keys[] as $k | .[$k].versions[] | .k8s as $v | "\($k) \($v)"], os: ["ubuntu-latest"]}' -c )
-          matrix=$( echo $matrix | jq '.os as $os | .version as $version | {version: $version, os: $os, include: [{version: $version[-1], os: "macos-latest"}]}' -c )
+          # matrix=$( echo $matrix | jq '.os as $os | .version as $version | {version: $version, os: $os, include: [{version: $version[-1], os: "macos-latest"}]}' -c )
           
           matrix=$( echo $matrix | jq '.os as $os | .version as $version | {version: $version[-1], os: "macos-latest"}' -c )
           
