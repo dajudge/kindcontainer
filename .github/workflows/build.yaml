@@ -43,7 +43,8 @@ jobs:
         if: runner.os == 'macos'
         run: |
           brew install docker
-          colima start
+          colima start --network-address
+          colima ls
           echo "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock" >> $GITHUB_ENV
           echo "TESTCONTAINERS_HOST_OVERRIDE=$(colima ls -j | jq -r '.address')" >> $GITHUB_ENV
           echo "DOCKER_HOST=\"unix://${HOME}/.colima/default/docker.sock\"" >> $GITHUB_ENV
