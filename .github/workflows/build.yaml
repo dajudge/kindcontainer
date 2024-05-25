@@ -15,10 +15,16 @@ jobs:
       - uses: actions/checkout@v3
       - id: set-matrix
         run: |
-          matrix=$( cat k8s-versions.json | jq '{version: [keys[] as $k | .[$k].versions[] | .k8s as $v | "\($k) \($v)"], os: ["ubuntu-latest"]}' -c )
-          # matrix=$( echo $matrix | jq '.os as $os | .version as $version | {version: $version, os: $os, include: [{version: $version[-1], os: "macos-latest"}]}' -c )
-          
-          matrix=$( echo $matrix | jq '.os as $os | .version as $version | {version: [$version[-1]], os: ["macos-13"]}' -c )
+          # Full matrix
+          # ubuntu_versions=$( cat k8s-versions.json | jq '{version: [keys[] as $k | .[$k].versions[] | .k8s as $v | "\($k) \($v)"], os: ["ubuntu-latest"]}' -c )
+          # macos_versions=$(cat k8s-versions.json | jq '{ version: [to_entries[] as $k | "\($k.key) \($k.value.versions[-1].k8s)"]}')
+          # matrix=$( echo $ubuntu_versions | jq --argjson macos_versions "$(echo -n $macos_versions)" '.os as $os | .version as $version | {version: $version, os: $os, include: [{version: $macos_versions.version, os: "macos-13"}]}' -c )
+
+          # echo $matrix
+          # echo "::set-output name=matrix::$matrix"
+
+          # MacOs Single Test
+          matrix='{"version":"ApiServerContainer 1.29.1","os":["macos-13"]}'
           
           echo $matrix
           echo "::set-output name=matrix::$matrix"
