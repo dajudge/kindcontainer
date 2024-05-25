@@ -55,10 +55,7 @@ test {
     systemProperty "kubernetes.disable.autoConfig", "true"
 
     environment 'TESTCONTAINERS_REUSE_ENABLE', 'true'
-    
-    if(System.getenv("CONTAINER_FILTER")) {
-        environment 'CONTAINER_FILTER', System.getenv("CONTAINER_FILTER")
-    }
+    environment 'CONTAINER_FILTER', System.getenv("CONTAINER_FILTER")
 
     useJUnitPlatform()
 
