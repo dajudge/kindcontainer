@@ -13,6 +13,7 @@ import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
 import org.testcontainers.utility.DockerImageName;
 
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,6 +52,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
             new GeneralName(GeneralName.iPAddress, "127.0.0.1")
     ));
     private EtcdContainer etcd;
+    private Duration controlPlaneReadyTimeout = Duration.ofMinutes(5);
 
     /**
      * Constructs a new <code>ApiServerContainer</code> with the latest supported Kubernetes version.
@@ -160,7 +162,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .pollInterval(ofMillis(100))
                 .pollDelay(ZERO)
                 .ignoreExceptions()
-                .forever()
+                .timeout(controlPlaneReadyTimeout)
                 .until(() -> null != TinyK8sClient.fromKubeconfig(getKubeconfig()).v1().nodes().list());
     }
 
@@ -203,5 +205,16 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     public void stop() {
         super.stop();
         etcd.stop();
+    }
+
+    /**
+     * Sets the timeout applied when waiting for the Kubernetes control plane to become ready.
+     *
+     * @param timeout the timeout
+     * @return <code>this</code>
+     */
+    public T withControlPlaneReadyTimeout(final Duration timeout) {
+        this.controlPlaneReadyTimeout = timeout;
+        return self();
     }
 }
