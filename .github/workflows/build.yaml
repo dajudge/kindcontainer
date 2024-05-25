@@ -24,7 +24,7 @@ jobs:
           # echo "::set-output name=matrix::$matrix"
 
           # MacOs Single Test
-          matrix='{"version":"ApiServerContainer 1.29.1","os":["macos-13"]}'
+          matrix=$( echo '{"version":"ApiServerContainer 1.30.0","os":["macos-13"]}' | jq '.')
           
           echo $matrix
           echo "::set-output name=matrix::$matrix"
