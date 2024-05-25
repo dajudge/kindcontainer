@@ -42,7 +42,7 @@ jobs:
       - name: Setup docker (missing on MacOS)
         if: runner.os == 'macos'
         run: |
-          brew install docker
+          brew install docker colima docker-buildx
           colima start --network-address
           colima ls
           # For testcontainers to find the Colima socket
