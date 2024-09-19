@@ -11,6 +11,7 @@ import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.k3sContainers;
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.runWithK8s;
+import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,8 +23,10 @@ public class ConfigurableCmdlineOptionsTest {
 
     private void assertCmdlineOptions(final KubernetesTestPackage<? extends K3sContainer<?>> container) {
         runWithK8s(container.newContainer()
-                .withCmdlineOptions(Arrays.asList("-v", "1"))
-                .withCmdlineOptions("--debug"), k8s -> {
+                .withCommandLineModifier(cmdLine -> {
+                    cmdLine.addAll(asList("-v", "1", "--debug"));
+                    return cmdLine;
+                }), k8s -> {
             List<String> commandParts = Arrays.stream(k8s.getCommandParts()).collect(Collectors.toList());
             // assert that default cmdline options are still present
             assertEquals("server", commandParts.get(0));

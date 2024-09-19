@@ -30,14 +30,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.BindMode;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
+import java.util.*;
+import java.util.function.Function;
 
 import static com.dajudge.kindcontainer.KubernetesVersionEnum.latest;
 import static com.dajudge.kindcontainer.client.KubeConfigUtils.replaceServerInKubeconfig;
 import static com.github.dockerjava.api.model.DockerObjectAccessor.overrideRawValue;
+import static java.util.Arrays.asList;
 
 public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWithKubeletContainer<SELF> {
     private static final Logger LOG = LoggerFactory.getLogger(K3sContainer.class);
@@ -46,7 +45,7 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
         put("/run", "");
         put("/var/run", "");
     }};
-    private final List<String> cmdlineOptions = new ArrayList<>();
+    private Function<List<String>, List<String>> cmdLineModifier = Function.identity();
     private final K3sContainerVersion version;
     private int minNodePort = 30000;
     private int maxNodePort = 32767;
@@ -72,15 +71,13 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
 
     @Override
     public void start() {
-        final List<String> cmdLine = new ArrayList<>();
-        cmdLine.add("server");
-        cmdLine.add(getDisabledComponentsCmdlineArg());
-        cmdLine.add("--tls-san=" + this.getHost());
-        cmdLine.add(String.format("--service-node-port-range=%d-%d", minNodePort, maxNodePort));
-        if (!cmdlineOptions.isEmpty()) {
-            LOG.debug("Starting container with custom cmdline options: {}", cmdlineOptions);
-            cmdLine.addAll(cmdlineOptions);
-        }
+        final List<String> cmdLine = cmdLineModifier.apply(new ArrayList<>(asList(
+                "server",
+                getDisabledComponentsCmdlineArg(),
+                String.format("--tls-san=%s", this.getHost()),
+                String.format("--service-node-port-range=%d-%d", minNodePort, maxNodePort)
+        )));
+        LOG.debug("k3s command line: {}", cmdLine);
         this.withCommand(cmdLine.toArray(new String[0]));
         super.start();
     }
@@ -100,24 +97,13 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
     }
 
     /**
-     * Adds custom command line options to the K3s container, e.g. to configure etcd or the K8s API server.
+     * Sets a custom command line modifier.
      *
-     * @param cmdlineOptions the command line options
+     * @param modifier the modifier.
      * @return <code>this</code>
      */
-    public SELF withCmdlineOptions(final String... cmdlineOptions) {
-        Collections.addAll(this.cmdlineOptions, cmdlineOptions);
-        return self();
-    }
-
-    /**
-     * Adds custom command line options to the K3s container, e.g. to configure etcd or the K8s API server.
-     *
-     * @param cmdlineOptions the command line options
-     * @return <code>this</code>
-     */
-    public SELF withCmdlineOptions(final List<String> cmdlineOptions) {
-        this.cmdlineOptions.addAll(cmdlineOptions);
+    public SELF withCommandLineModifier(final Function<List<String>, List<String>> modifier) {
+        this.cmdLineModifier = modifier;
         return self();
     }
 
