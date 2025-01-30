@@ -67,7 +67,6 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
                 .withExposedPorts(INTERNAL_API_SERVER_PORT)
                 .withPrivilegedMode(true)
                 .withCreateContainerCmdModifier(it -> overrideRawValue(it.getHostConfig(), "CgroupnsMode", "host"))
-                .withFileSystemBind("/sys/fs/cgroup", "/sys/fs/cgroup", BindMode.READ_WRITE)
                 .withTmpFs(TMP_FILESYSTEMS);
     }
 
