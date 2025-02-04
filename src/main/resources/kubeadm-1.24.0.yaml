@@ -52,6 +52,8 @@ nodeRegistration:
     provider-id: kind://docker/kind/kindcontainer-control-plane
 ---
 apiVersion: kubelet.config.k8s.io/v1beta1
+featureGates:
+  KubeletInUserNamespace: true
 cgroupDriver: systemd
 cgroupRoot: /kubelet
 evictionHard:
