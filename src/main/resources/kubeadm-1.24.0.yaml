@@ -52,6 +52,7 @@ nodeRegistration:
     provider-id: kind://docker/kind/kindcontainer-control-plane
 ---
 apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
 featureGates:
   KubeletInUserNamespace: true
 cgroupDriver: systemd
@@ -62,7 +63,6 @@ evictionHard:
   nodefs.inodesFree: 0%
 failSwapOn: false
 imageGCHighThresholdPercent: 100
-kind: KubeletConfiguration
 ---
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 conntrack:
