@@ -24,8 +24,7 @@ import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.allContaine
 import static io.fabric8.kubernetes.client.Config.fromKubeconfig;
 import static java.time.Duration.ofSeconds;
 import static java.util.Collections.emptyMap;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 public class WebhookTest {
@@ -63,19 +62,19 @@ public class WebhookTest {
     }
 
     private static void awaitWebhooks(NamespacedKubernetesClient client) {
-        await().ignoreExceptions()
-                .timeout(ofSeconds(30))
+        await().timeout(ofSeconds(30))
                 .untilAsserted(() -> assertValidates(client.inNamespace("default")));
-        await().ignoreExceptions()
-                .timeout(ofSeconds(30))
+        await().timeout(ofSeconds(30))
                 .untilAsserted(() -> assertMutates(client.inNamespace("default")));
     }
 
     private static void assertValidates(NamespacedKubernetesClient client) {
         try {
             client.configMaps().create(buildConfigMap(false, true));
+            fail("ConfigMap should not have been accepted");
         } catch (final KubernetesClientException e) {
-            if (e.getCode() == 400) {
+            if (e.getStatus().getCode() == 400) {
+                // This is what we expect: the validating webhook failed our request
                 return;
             }
             throw e;
