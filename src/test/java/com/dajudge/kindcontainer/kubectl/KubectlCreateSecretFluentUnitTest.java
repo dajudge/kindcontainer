@@ -16,6 +16,6 @@ public class KubectlCreateSecretFluentUnitTest {
     @Test
     public void masksPassword() throws IOException, ExecutionException, InterruptedException {
         underTest.dockerPassword("lolcats123").run("mySecret");
-        verify(exec).safeExecInContainer(eq(singletonList("lolcats123")), any(String.class));
+        verify(exec).safeExecInContainer(eq(singletonList("lolcats123")), any(String[].class));
     }
 }
