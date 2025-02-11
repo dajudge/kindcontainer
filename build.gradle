@@ -39,10 +39,11 @@ dependencies {
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
     testImplementation "org.junit.jupiter:junit-jupiter-params:$junitVersion"
     testImplementation 'com.sparkjava:spark-core:2.9.4'
+    testImplementation "org.slf4j:slf4j-api:2.0.16"
 
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine:$junitVersion"
-    testRuntimeOnly "ch.qos.logback:logback-classic:1.2.13"
+    testRuntimeOnly "ch.qos.logback:logback-classic:1.5.16"
 }
 
 java {
