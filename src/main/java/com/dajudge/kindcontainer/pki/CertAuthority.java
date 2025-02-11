@@ -147,7 +147,7 @@ public class CertAuthority {
 
             final X509v3CertificateBuilder certGenerator = new X509v3CertificateBuilder(
                     new X500Name(issuerDn),
-                    BigInteger.valueOf(SECURE_RANDOM.nextInt()),
+                    BigInteger.valueOf(Math.abs(SECURE_RANDOM.nextInt())),
                     notBefore,
                     notAfter,
                     new X500Name(ownerDn),
