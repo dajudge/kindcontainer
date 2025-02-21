@@ -34,7 +34,7 @@ dependencies {
 
     testImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
     testImplementation "io.fabric8:kubernetes-client:7.1.0"
-    testImplementation "org.awaitility:awaitility:4.2.2"
+    testImplementation "org.awaitility:awaitility:4.3.0"
     testImplementation "org.mockito:mockito-core:5.15.2"
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
     testImplementation "org.junit.jupiter:junit-jupiter-params:$junitVersion"
