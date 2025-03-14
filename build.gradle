@@ -25,7 +25,7 @@ apply from: "${rootProject.projectDir}/codegen.gradle"
 
 ext {
     testcontainersVersion = "1.20.5"
-    junitVersion = "5.11.4"
+    junitVersion = "5.12.1"
 }
 
 dependencies {
