@@ -2,7 +2,7 @@ plugins {
     id "java"
     id "java-library"
     id "maven-publish"
-    id "com.palantir.git-version" version "1.0.0"
+    id "com.palantir.git-version" version "3.3.0"
 }
 
 sourceCompatibility = 1.8
