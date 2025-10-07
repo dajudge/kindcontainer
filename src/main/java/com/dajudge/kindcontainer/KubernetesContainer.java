@@ -39,7 +39,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
     private final AtomicReference<DockerImageName> helm3Image = new AtomicReference<>(DockerImageName.parse("alpine/helm:3.14.0"));
     private final LazyContainer<Helm3Container<?>> helm3 = Helm3Container.lazy(helm3Image::get, this::getContainerId, this::getInternalKubeconfig);
-    private final AtomicReference<DockerImageName> kubectlImage = new AtomicReference<>(DockerImageName.parse("bitnami/kubectl:1.21.9-debian-10-r10"));
+    private final AtomicReference<DockerImageName> kubectlImage = new AtomicReference<>(DockerImageName.parse("rancher/kubectl:v1.33.5"));
     private final LazyContainer<KubectlContainer<?, T>> kubectl = KubectlContainer.lazy(kubectlImage::get, this::getContainerId, this::getInternalKubeconfig, self());
     private final AtomicReference<DockerImageName> nginxImage = new AtomicReference<>(DockerImageName.parse("nginx:1.23.3"));
     private final AtomicReference<DockerImageName> opensshServerImage = new AtomicReference<>(DockerImageName.parse("linuxserver/openssh-server:9.0_p1-r2-ls99"));
