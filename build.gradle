@@ -1,8 +1,7 @@
 plugins {
-    id "java"
     id "java-library"
-    id "maven-publish"
     id "com.palantir.git-version" version "1.0.0"
+    id "com.vanniktech.maven.publish" version "0.34.0"
 }
 
 sourceCompatibility = 1.8
@@ -20,7 +19,6 @@ version versionDetails.isCleanTag && gitVersion().startsWith("release/")
 println "Build version $version"
 
 apply from: "${rootProject.projectDir}/publishing.gradle"
-apply from: "${rootProject.projectDir}/signing.gradle"
 apply from: "${rootProject.projectDir}/codegen.gradle"
 
 ext {
@@ -44,11 +42,6 @@ dependencies {
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine:$junitVersion"
     testRuntimeOnly "ch.qos.logback:logback-classic:1.5.19"
-}
-
-java {
-    withJavadocJar()
-    withSourcesJar()
 }
 
 test {

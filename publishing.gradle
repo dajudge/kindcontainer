@@ -1,58 +1,31 @@
-apply plugin: "maven-publish"
+group = "com.dajudge.kindcontainer"
 
-def scmUrl = 'https://github.com/dajudge/kindcontainer'
-def pomConfig = {
-    licenses {
-        delegate.license {
-            name "The Apache Software License, Version 2.0"
-            url "http://www.apache.org/licenses/LICENSE-2.0.txt"
-            distribution "repo"
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+
+    coordinates("com.dajudge.kindcontainer", "kindcontainer", version)
+    pom {
+        name = "kindcontainer"
+        description = "Testcontainers that start Kubernetes in Docker."
+        url = "https://github.com/dajudge/kindcontainer"
+        licenses {
+            license {
+                name = "Apache-2.0"
+                url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+            }
         }
-    }
-    developers {
-        developer {
-            id "alexstockinger"
-            name "Alex Stockinger"
-            email "mail@alexstockinger.de"
+        scm {
+            url = "https://github.com/dajudge/kindcontainer"
+            connection = "scm:git:git://github.com/dajudge/kindcontainer.git"
+            developerConnection = "scm:git:ssh://git@github.com/dajudge/kindcontainer.git"
         }
-    }
-
-    scm {
-        url scmUrl
-    }
-}
-
-def projectGroupId = "com.dajudge.kindcontainer"
-def projectArtifactId = project.name
-def projectVersion = project.version
-publishing {
-    publications {
-        KindContainer(MavenPublication) {
-            from components.java
-            groupId projectGroupId
-            artifactId projectArtifactId
-            version projectVersion
-            pom.withXml {
-                def root = asNode()
-                root.appendNode('description', "kindcontainer-${projectArtifactId} v${projectVersion}")
-                root.appendNode('name', "kindcontainer-${projectArtifactId}")
-                root.appendNode('url', scmUrl)
-                root.children().last() + pomConfig
+        developers {
+            developer {
+                id = "dajudge"
+                name = "Alex Stockinger"
+                url = "https://github.com/dajudge"
             }
         }
     }
-    repositories {
-        maven {
-            name = "OSSRH"
-            setUrl("https://s01.oss.sonatype.org/service/local/staging/deploy/maven2")
-            credentials {
-                username = System.getenv("OSSRH_USER") ?: "wrong"
-                password = System.getenv("OSSRH_PASSWORD") ?: "credentials"
-            }
-        }
-    }
-}
-
-publishToMavenLocal.doFirst {
-    println "Publishing to maven local: $projectGroupId:$projectArtifactId:$projectVersion"
 }
