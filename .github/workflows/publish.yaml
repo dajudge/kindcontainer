@@ -13,7 +13,7 @@ jobs:
           java-version: '17'
           distribution: 'adopt'
       - name: Publish package
-        run: gradle publishToMavenCentral
+        run: ./gradlew publishToMavenCentral
         env:
           ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALUSERNAME }}
           ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.ORG_GRADLE_PROJECT_MAVENCENTRALPASSWORD }}
