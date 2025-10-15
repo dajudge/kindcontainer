@@ -4,9 +4,6 @@ plugins {
     id "com.vanniktech.maven.publish" version "0.34.0"
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
 repositories {
     mavenLocal()
     mavenCentral()
@@ -26,6 +23,11 @@ ext {
     junitVersion = "5.11.4"
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
 dependencies {
     api "org.testcontainers:testcontainers:$testcontainersVersion"
     implementation "org.bouncycastle:bcpkix-jdk18on:1.82"
@@ -39,6 +41,7 @@ dependencies {
     testImplementation 'com.sparkjava:spark-core:2.9.4'
     testImplementation "org.slf4j:slf4j-api:2.0.17"
 
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine:$junitVersion"
     testRuntimeOnly "ch.qos.logback:logback-classic:1.5.19"
