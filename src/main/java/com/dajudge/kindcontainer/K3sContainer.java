@@ -28,7 +28,6 @@ package com.dajudge.kindcontainer;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.BindMode;
 
 import java.util.ArrayList;
 import java.util.HashMap;

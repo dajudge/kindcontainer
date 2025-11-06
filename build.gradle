@@ -19,7 +19,7 @@ apply from: "${rootProject.projectDir}/publishing.gradle"
 apply from: "${rootProject.projectDir}/codegen.gradle"
 
 ext {
-    testcontainersVersion = "1.21.3"
+    testcontainersVersion = "2.0.1"
     junitVersion = "5.11.4"
 }
 
@@ -32,7 +32,7 @@ dependencies {
     api "org.testcontainers:testcontainers:$testcontainersVersion"
     implementation "org.bouncycastle:bcpkix-jdk18on:1.82"
 
-    testImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
+    testImplementation "org.testcontainers:testcontainers-junit-jupiter:$testcontainersVersion"
     testImplementation "io.fabric8:kubernetes-client:7.4.0"
     testImplementation "org.awaitility:awaitility:4.3.0"
     testImplementation "org.mockito:mockito-core:5.20.0"
@@ -43,7 +43,6 @@ dependencies {
 
     testRuntimeOnly "org.junit.platform:junit-platform-launcher"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
-    testRuntimeOnly "org.junit.vintage:junit-vintage-engine:$junitVersion"
     testRuntimeOnly "ch.qos.logback:logback-classic:1.5.19"
 }
 

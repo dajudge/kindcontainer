@@ -1,8 +1,8 @@
 package com.dajudge.kindcontainer.client.http;
 
+import org.apache.commons.io.input.ProxyInputStream;
 import org.jetbrains.annotations.NotNull;
 import org.testcontainers.shaded.com.fasterxml.jackson.core.type.TypeReference;
-import org.testcontainers.shaded.org.apache.commons.io.input.ProxyInputStream;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
