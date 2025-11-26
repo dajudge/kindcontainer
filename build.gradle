@@ -30,7 +30,7 @@ java {
 
 dependencies {
     api "org.testcontainers:testcontainers:$testcontainersVersion"
-    implementation "org.bouncycastle:bcpkix-jdk18on:1.82"
+    implementation "org.bouncycastle:bcpkix-jdk18on:1.83"
 
     testImplementation "org.testcontainers:junit-jupiter:$testcontainersVersion"
     testImplementation "io.fabric8:kubernetes-client:7.4.0"
