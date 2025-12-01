@@ -13,7 +13,7 @@ Kubernetes clusters for integration testing.
   * [Add dependency](#add-dependency)
     * [Maven](#maven)
     * [Gradle](#gradle)
-  * [Use in JUnit 4 test](#use-in-junit-4-test)
+  * [Use in JUnit 5 test](#use-in-junit-5-test)
     * [With `KindContainer`](#with-kindcontainer)
     * [With `K3sContainer`](#with-k3scontainer)
     * [With `ApiServerContainer`](#with-apiservercontainer)
@@ -79,15 +79,16 @@ dependencies {
 }
 ```
 
-## Use in JUnit 4 test
+## Use in JUnit 5 test
 
 Once you have the Kindcontainer dependency configured you can create JUnit test case easily.
 
 ### With `KindContainer`
 
 ```java
+@Testcontainers
 public class SomeKindTest {
-    @ClassRule
+    @Container
     public static final KindContainer<?> KUBE = new KindContainer<>();
 
     @Test
@@ -100,13 +101,14 @@ public class SomeKindTest {
 }
 ```
 
-Look [here](src/test/java/com/dajudge/kindcontainer/readme/junit4/SomeKindTest.java) for the reference test.
+Look [here](src/test/java/com/dajudge/kindcontainer/readme/junit5/SomeKindTest.java) for the reference test.
 
 ### With `K3sContainer`
 
 ```java
+@Testcontainers
 public class SomeK3sTest {
-    @ClassRule
+    @Container
     public static final K3sContainer<?> K3S = new K3sContainer<>();
 
     @Test
@@ -119,7 +121,7 @@ public class SomeK3sTest {
 }
 ```
 
-Look [here](src/test/java/com/dajudge/kindcontainer/readme/junit4/SomeK3sTest.java) for the reference test.
+Look [here](src/test/java/com/dajudge/kindcontainer/readme/junit5/SomeK3sTest.java) for the reference test.
 
 ### With `ApiServerContainer`
 
@@ -130,8 +132,9 @@ if all you want to test is if your custom controller/operator handles its CRDs p
 objects in the control plane.
 
 ```java
+@Testcontainers
 public class SomeApiServerTest {
-    @ClassRule
+    @Container
     public static final ApiServerContainer<?> KUBE = new ApiServerContainer<>();
 
     @Test
@@ -144,7 +147,7 @@ public class SomeApiServerTest {
 }
 ```
 
-Look [here](src/test/java/com/dajudge/kindcontainer/readme/junit4/SomeApiServerTest.java) for the reference test.
+Look [here](src/test/java/com/dajudge/kindcontainer/readme/junit5/SomeApiServerTest.java) for the reference test.
 
 # Quick guides
 
