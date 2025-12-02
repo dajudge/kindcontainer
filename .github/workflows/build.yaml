@@ -16,7 +16,7 @@ jobs:
         run: |
           matrix=$( cat k8s-versions.json | jq '{version: [keys[] as $k | .[$k].versions[] | .k8s as $v | "\($k) \($v)"]}' -c )
           echo $matrix
-          echo "::set-output name=matrix::$matrix"
+          echo "matrix=$matrix" >> $GITHUB_OUTPUT
 
   check-matrix:
     runs-on: ubuntu-latest
