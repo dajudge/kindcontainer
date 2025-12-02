@@ -31,7 +31,7 @@ Kubernetes clusters for integration testing.
 
 # Container Flavors
 
-The Kindcontainer libraries offers three different Kubernetes container implementations:
+The Kindcontainer library offers three different Kubernetes container implementations:
 
 * `ApiServerContainer`
 * `K3sContainer`
@@ -58,7 +58,7 @@ Add the Kindcontainer dependency:
         <dependency>
             <groupId>com.dajudge.kindcontainer</groupId>
             <artifactId>kindcontainer</artifactId>
-            <version>1.4.6</version>
+            <version>2.0.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -75,7 +75,7 @@ repositories {
 }
 
 dependencies {
-    testImplementation "com.dajudge.kindcontainer:kindcontainer:1.4.6"
+    testImplementation "com.dajudge.kindcontainer:kindcontainer:2.0.0"
 }
 ```
 
@@ -161,7 +161,7 @@ constructor. The following example illustrates this process for the `KindContain
 analogous for the other two containers as well.
 
 ```java
-KindContainer<?> container=new KindContainer<>(KindContainerVersion.VERSION_1_24_1);
+KindContainer<?> container = new KindContainer<>(KindContainerVersion.VERSION_1_34_0);
 ```
 
 ## Using the `kubectl` and `helm` fluent APIs
@@ -176,8 +176,9 @@ You can use them directly during container instantiation like this:
 
 ```java
 // Kubectl example
+@Testcontainers
 public class SomeKubectlTest {
-    @ClassRule
+    @Container
     public static final ApiServerContainer<?> KUBE = new ApiServerContainer<>()
             .withKubectl(kubectl -> {
                 kubectl.apply
@@ -187,8 +188,9 @@ public class SomeKubectlTest {
 }
 
 // Helm3 example
+@Testcontainers
 public class SomeHelmTest {
-    @ClassRule
+    @Container
     public static final KindContainer<?> KUBE = new KindContainer<>()
             .withHelm3(helm -> {
                 helm.repo.add.run("mittwald", "https://helm.mittwald.de");
@@ -249,7 +251,7 @@ K3sContainer<?> container = new K3sContainer<>()
 being used to start that support container use method `withEtcdImage()`:
 
 ```java
-ApiServerContainer<?> container = new ApiServerContainer<>().withEtcdImage(DockerImageName.parse("my-registry.com/etcd:.4.13-0"));
+ApiServerContainer<?> container = new ApiServerContainer<>().withEtcdImage(DockerImageName.parse("my-registry.com/etcd:3.5.12-0"));
 ```
 
 ### `sshd` and `nginx` image for webhook testing
@@ -259,7 +261,7 @@ images
 are being used to start those support containers use the `withNginxImage()` and `withOpensshServerImage()` methods.
 
 ```java
-ApiServerContainer<?> container = new ApiServerContainer()
+ApiServerContainer<?> container = new ApiServerContainer<>()
         .withNginxImage(DockerImageName.parse("my-registry/nginx:1.23.3"))
         .withOpensshServerImage(DockerImageName.parse("my-registry/openssh-server:9.0_p1-r2-ls99"));
 ```
@@ -273,7 +275,7 @@ You can use Kindcontainer to test your admission controllers.
 
 Example:
 ```java
-ApiServerContainer<?> container = new ApiServerContainer().withAdmissionController(admission -> {
+ApiServerContainer<?> container = new ApiServerContainer<>().withAdmissionController(admission -> {
           admission.validating()    // use mutating() for a mutating admission controller
             .withNewWebhook("validating.kindcontainer.dajudge.com")
               .atPort(webhookPort)
