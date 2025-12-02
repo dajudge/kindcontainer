@@ -39,7 +39,7 @@ jobs:
         uses: actions/setup-java@v2
         with:
           java-version: '17'
-          distribution: 'adopt'
+          distribution: 'temurin'
       - name: Build with Gradle
         env:
           CONTAINER_FILTER: ${{ matrix.version }}
