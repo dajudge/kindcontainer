@@ -94,7 +94,7 @@ public class SomeKindTest {
     @Test
     public void verify_node_is_present() {
         // Create a fabric8 client and use it!
-        try (KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(KUBE.getKubeconfig()))) {
+        try (KubernetesClient client = new KubernetesClientBuilder().withConfig(fromKubeconfig(KUBE.getKubeconfig())).build()) {
             assertEquals(1, client.nodes().list().getItems().size());
         }
     }
@@ -114,7 +114,7 @@ public class SomeK3sTest {
     @Test
     public void verify_node_is_present() {
         // Create a fabric8 client and use it!
-        try (KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(K3S.getKubeconfig()))) {
+        try (KubernetesClient client = new KubernetesClientBuilder().withConfig(fromKubeconfig(K3S.getKubeconfig())).build()) {
             assertEquals(1, client.nodes().list().getItems().size());
         }
     }
@@ -140,7 +140,7 @@ public class SomeApiServerTest {
     @Test
     public void verify_no_node_is_present() {
         // Create a fabric8 client and use it!
-        try (KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(KUBE.getKubeconfig()))) {
+        try (KubernetesClient client = new KubernetesClientBuilder().withConfig(fromKubeconfig(KUBE.getKubeconfig())).build()) {
             assertTrue(client.nodes().list().getItems().isEmpty());
         }
     }
