@@ -11,7 +11,7 @@ jobs:
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - id: set-matrix
         run: |
           matrix=$( cat k8s-versions.json | jq '{version: [keys[] as $k | .[$k].versions[] | .k8s as $v | "\($k) \($v)"]}' -c )
@@ -34,7 +34,7 @@ jobs:
     strategy:
       matrix: ${{ fromJson(needs.matrix.outputs.matrix) }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up JDK
         uses: actions/setup-java@v2
         with:
