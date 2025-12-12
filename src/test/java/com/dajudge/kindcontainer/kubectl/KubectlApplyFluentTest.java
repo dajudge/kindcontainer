@@ -4,7 +4,7 @@ import com.dajudge.kindcontainer.ApiServerContainer;
 import com.dajudge.kindcontainer.KubernetesContainer;
 import com.dajudge.kindcontainer.exception.ExecutionException;
 import io.fabric8.kubernetes.api.model.ConfigMap;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClient;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -89,7 +89,7 @@ public class KubectlApplyFluentTest {
         assertInterpolates(config, k8s -> k8s.getContainerInfo().getId());
     }
 
-    private boolean serviceAccountExists(final DefaultKubernetesClient client) {
+    private boolean serviceAccountExists(final KubernetesClient client) {
         return null != client.inNamespace("my-namespace").serviceAccounts()
                 .withName("my-service-account")
                 .get();
@@ -113,7 +113,7 @@ public class KubectlApplyFluentTest {
 
     private void withK8s(
             final Function<KubernetesContainer<?>, KubernetesContainer<?>> config,
-            final BiConsumer<KubernetesContainer<?>, DefaultKubernetesClient> consumer
+            final BiConsumer<KubernetesContainer<?>, KubernetesClient> consumer
     ) {
         try (final KubernetesContainer<?> k8s = config.apply(new ApiServerContainer<>())) {
             k8s.start();
