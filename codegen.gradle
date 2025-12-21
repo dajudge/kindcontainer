@@ -24,25 +24,29 @@ ${
                     def minor = versionParts[1]
                     def patch = versionParts[2]
                     def deprecated = version.get("deprecated") ?: false
+                    def customImage = version.get("image") ?: null
                     def deprecation = deprecated ? "\t@Deprecated\n" : ""
-                    "${deprecation}\tVERSION_${major}_${minor}_${patch}(new KubernetesVersionDescriptor(${major}, ${minor}, ${patch}))"
+                    def imageArg = customImage ? ", \"${customImage}\"" : ", null"
+                    "${deprecation}\tVERSION_${major}_${minor}_${patch}(new KubernetesVersionDescriptor(${major}, ${minor}, ${patch})${imageArg})"
                 }).join(",\n")
             };
-    
+
     private final KubernetesVersionDescriptor descriptor;
-    
-    private ${enumName}(final KubernetesVersionDescriptor descriptor) {
+    private final String customImage;
+
+    private ${enumName}(final KubernetesVersionDescriptor descriptor, final String customImage) {
         this.descriptor = descriptor;
+        this.customImage = customImage;
     }
-    
+
     @Override
     public KubernetesVersionDescriptor descriptor() {
         return descriptor;
     }
-    
+
     @Override
     public String defaultImageTemplate() {
-        return "${defaultImageTemplate}";
+        return customImage != null ? customImage : "${defaultImageTemplate}";
     }
     
     @Override
