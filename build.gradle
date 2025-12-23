@@ -19,7 +19,7 @@ apply from: "${rootProject.projectDir}/publishing.gradle"
 apply from: "${rootProject.projectDir}/codegen.gradle"
 
 ext {
-    testcontainersVersion = "2.0.2"
+    testcontainersVersion = "2.0.3"
     junitVersion = "5.11.4"
 }
 
