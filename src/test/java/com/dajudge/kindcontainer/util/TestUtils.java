@@ -6,8 +6,9 @@ import com.dajudge.kindcontainer.Utils.ThrowingFunction;
 import com.dajudge.kindcontainer.client.http.Response;
 import com.dajudge.kindcontainer.client.http.TinyHttpClient;
 import io.fabric8.kubernetes.api.model.*;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
+import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import org.testcontainers.shaded.com.google.common.io.Resources;
 
 import java.io.ByteArrayOutputStream;
@@ -116,7 +117,7 @@ public final class TestUtils {
 
     public static <T extends KubernetesContainer<T>, O> O runWithClient(
             final KubernetesContainer<?> k8s,
-            final ThrowingConsumer<DefaultKubernetesClient, Exception> consumer
+            final ThrowingConsumer<NamespacedKubernetesClient, Exception> consumer
     ) {
         return runWithClient(k8s, client -> {
             consumer.accept(client);
@@ -126,9 +127,9 @@ public final class TestUtils {
 
     public static <O> O runWithClient(
             final KubernetesContainer<?> k8s,
-            final ThrowingFunction<DefaultKubernetesClient, O, Exception> consumer
+            final ThrowingFunction<NamespacedKubernetesClient, O, Exception> consumer
     ) {
-        try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(k8s.getKubeconfig()))) {
+        try (final NamespacedKubernetesClient client = (NamespacedKubernetesClient) new KubernetesClientBuilder().withConfig(fromKubeconfig(k8s.getKubeconfig())).build()) {
             try {
                 return consumer.apply(client);
             } catch (final Exception e) {
