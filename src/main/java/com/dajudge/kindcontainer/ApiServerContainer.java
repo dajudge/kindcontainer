@@ -9,6 +9,7 @@ import com.github.dockerjava.api.command.CreateContainerCmd;
 import com.github.dockerjava.api.command.InspectContainerResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.Network;
 import org.testcontainers.shaded.org.awaitility.Awaitility;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
 import org.testcontainers.utility.DockerImageName;
@@ -53,6 +54,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     ));
     private EtcdContainer etcd;
     private Duration controlPlaneReadyTimeout = Duration.ofMinutes(5);
+    private Network network = Network.newNetwork();
 
     /**
      * Constructs a new <code>ApiServerContainer</code> with the latest supported Kubernetes version.
@@ -93,7 +95,8 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
                 .withCopyAsciiToContainer(apiServerCa.getCaKeyStore().getCertificatePem(), API_SERVER_CA)
                 .withCopyAsciiToContainer(etcdClientKeyPair.getCertificatePem(), ETCD_CLIENT_CERT)
                 .withCopyAsciiToContainer(etcdClientKeyPair.getPrivateKeyPem(), ETCD_CLIENT_KEY)
-                .withCopyAsciiToContainer(etcdCa.getCaKeyStore().getCertificatePem(), ETCD_CLIENT_CA);
+                .withCopyAsciiToContainer(etcdCa.getCaKeyStore().getCertificatePem(), ETCD_CLIENT_CA)
+                .withNetwork(network);
     }
 
     @Override
@@ -119,7 +122,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
             put("etcd-cafile", ETCD_CLIENT_CA);
             put("etcd-certfile", ETCD_CLIENT_CERT);
             put("etcd-keyfile", ETCD_CLIENT_KEY);
-            put("etcd-servers", "https://localhost:2379");
+            put("etcd-servers", "https://etcd:2379");
             put("service-account-key-file", API_SERVER_PUBKEY);
             put("service-account-signing-key-file", API_SERVER_KEY);
             put("service-account-issuer", "https://kubernetes.default.svc.cluster.local");
@@ -143,7 +146,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
 
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
-        etcd = new EtcdContainer(etcdImage, etcdCa, containerInfo.getId());
+        etcd = new EtcdContainer(etcdImage, etcdCa, network);
         etcd.start();
         waitForApiServer();
         waitForDefaultNamespace();
@@ -205,6 +208,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     public void stop() {
         super.stop();
         etcd.stop();
+        network.close();
     }
 
     /**
