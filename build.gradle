@@ -43,7 +43,7 @@ dependencies {
 
     testRuntimeOnly "org.junit.platform:junit-platform-launcher:6.0.1"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
-    testRuntimeOnly "ch.qos.logback:logback-classic:1.5.24"
+    testRuntimeOnly "ch.qos.logback:logback-classic:1.5.25"
 }
 
 test {
