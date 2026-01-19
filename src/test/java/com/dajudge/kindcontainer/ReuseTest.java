@@ -1,6 +1,7 @@
 package com.dajudge.kindcontainer;
 
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -26,13 +27,13 @@ public class ReuseTest {
     private void assertDoesNotReapplyPostAvailabilityExecutions(final Supplier<KubernetesContainer<?>> factory) {
         try (final KubernetesContainer<?> orig = applyConfig(factory.get())) {
             orig.start();
-            try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(orig.getKubeconfig()))) {
+            try (final KubernetesClient client = new KubernetesClientBuilder().withConfig(fromKubeconfig(orig.getKubeconfig())).build()) {
                 assertNotNull(client.serviceAccounts().inNamespace("my-namespace").withName("my-service-account").get());
                 client.serviceAccounts().inNamespace("my-namespace").withName("my-service-account").delete();
             }
             final KubernetesContainer<?> copy = applyConfig(factory.get());
             copy.start();
-            try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(copy.getKubeconfig()))) {
+            try (final KubernetesClient client = new KubernetesClientBuilder().withConfig(fromKubeconfig(copy.getKubeconfig())).build()) {
                 assertNotNull(client.namespaces().withName("my-namespace").get());
                 assertNull(client.serviceAccounts().inNamespace("my-namespace").withName("my-service-account").get());
             }

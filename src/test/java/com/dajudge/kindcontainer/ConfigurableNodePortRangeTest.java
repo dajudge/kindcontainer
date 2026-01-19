@@ -3,7 +3,8 @@ package com.dajudge.kindcontainer;
 import io.fabric8.kubernetes.api.model.ServiceBuilder;
 import io.fabric8.kubernetes.api.model.ServicePortBuilder;
 import io.fabric8.kubernetes.api.model.ServiceSpecBuilder;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -39,7 +40,7 @@ public class ConfigurableNodePortRangeTest {
     public Stream<DynamicTest> cannot_expose_outside_of_valid_range() {
         return kubeletContainers(testPkg -> {
             runWithK8s(configureContainer(testPkg.newContainer()), k8s -> assertThrows(KubernetesClientException.class, () -> {
-                try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(k8s.getKubeconfig()))) {
+                try (final KubernetesClient client = new KubernetesClientBuilder().withConfig(fromKubeconfig(k8s.getKubeconfig())).build()) {
                     createService(client, "invalid-port-service", 20011);
                 }
             }));
@@ -47,7 +48,7 @@ public class ConfigurableNodePortRangeTest {
     }
 
     private void createService(
-            final DefaultKubernetesClient client,
+            final KubernetesClient client,
             final String name,
             final int nodePort
     ) {

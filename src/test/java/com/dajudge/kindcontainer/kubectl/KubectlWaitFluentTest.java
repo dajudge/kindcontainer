@@ -6,7 +6,7 @@ import io.fabric8.kubernetes.api.model.NamespaceBuilder;
 import io.fabric8.kubernetes.api.model.apps.Deployment;
 import io.fabric8.kubernetes.api.model.apps.DeploymentBuilder;
 import io.fabric8.kubernetes.api.model.apps.DeploymentConditionBuilder;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +36,7 @@ public class KubectlWaitFluentTest {
 
     @BeforeEach
     public void before() {
-        client = new DefaultKubernetesClient(fromKubeconfig(k8s.getKubeconfig())).inNamespace(namespace);
+        client = new KubernetesClientBuilder().withConfig(fromKubeconfig(k8s.getKubeconfig())).build().inNamespace(namespace);
         client.namespaces().create(new NamespaceBuilder().withNewMetadata().withName(namespace).endMetadata().build());
     }
 

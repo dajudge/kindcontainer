@@ -1,8 +1,8 @@
 package com.dajudge.kindcontainer.readme.junit5;
 
 import com.dajudge.kindcontainer.K3sContainer;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -18,7 +18,7 @@ public class SomeK3sTest {
     @Test
     public void verify_node_is_present() {
         // Create a fabric8 client and use it!
-        try (final KubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(K3S.getKubeconfig()))) {
+        try (final KubernetesClient client = new KubernetesClientBuilder().withConfig(fromKubeconfig(K3S.getKubeconfig())).build()) {
             assertEquals(1, client.nodes().list().getItems().size());
         }
     }
