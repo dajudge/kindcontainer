@@ -1,6 +1,6 @@
 plugins {
     id "java-library"
-    id "com.palantir.git-version" version "1.0.0"
+    id "com.palantir.git-version" version "4.3.0"
     id "com.vanniktech.maven.publish" version "0.36.0"
 }
 
