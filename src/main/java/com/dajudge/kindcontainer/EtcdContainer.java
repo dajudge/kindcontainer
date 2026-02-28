@@ -2,6 +2,8 @@ package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.pki.CertAuthority;
 import com.dajudge.kindcontainer.pki.KeyStoreWrapper;
+
+import org.testcontainers.containers.Network;
 import org.testcontainers.shaded.org.bouncycastle.asn1.x509.GeneralName;
 import org.testcontainers.utility.DockerImageName;
 
@@ -22,15 +24,15 @@ class EtcdContainer extends BaseGenericContainer<EtcdContainer> {
     private static final String STARTUP_SIGNAL_PATH = DOCKER_BASE_PATH + "/startup";
     private static final String[] CMD = buildCommand();
 
-    EtcdContainer(final DockerImageName image, final CertAuthority etcdCa, final String targetContainerId) {
+    EtcdContainer(final DockerImageName image, final CertAuthority etcdCa, final Network network) {
         super(image);
         final KeyStoreWrapper etcdKeypair = etcdCa.newKeyPair(
                 "CN=etcd",
-                singletonList(new GeneralName(GeneralName.dNSName, "localhost"))
+                singletonList(new GeneralName(GeneralName.dNSName, "etcd"))
         );
         this
                 .withNetworkAliases("etcd")
-                .withNetworkMode("container:" + targetContainerId)
+                .withNetwork(network)
                 .withEnv("STARTUP_SIGNAL", STARTUP_SIGNAL_PATH)
                 .withEnv("SERVER_CERT_PATH", SERVER_CERT_PATH)
                 .withEnv("SERVER_KEY_PATH", SERVER_KEY_PATH)
@@ -44,7 +46,7 @@ class EtcdContainer extends BaseGenericContainer<EtcdContainer> {
 
     private static String[] buildCommand() {
         final Map<String, String> params = new HashMap<String, String>() {{
-            put("advertise-client-urls", "https://localhost:2379");
+            put("advertise-client-urls", "https://etcd:2379");
             put("cert-file", SERVER_CERT_PATH);
             put("key-file", SERVER_KEY_PATH);
             put("trusted-ca-file", SERVER_CACERTS_PATH);
@@ -56,7 +58,7 @@ class EtcdContainer extends BaseGenericContainer<EtcdContainer> {
             put("data-dir", "/var/lib/etcd");
             put("initial-advertise-peer-urls", "https://localhost:2380");
             put("initial-cluster", "control-plane=https://localhost:2380");
-            put("listen-client-urls", "https://localhost:2379");
+            put("listen-client-urls", "https://0.0.0.0:2379");
             put("listen-metrics-urls", "http://localhost:2381");
             put("listen-peer-urls", "https://localhost:2380");
             put("name", "control-plane");
