@@ -24,6 +24,7 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
     private static final HashMap<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
         put("/run", "");
         put("/var/run", "");
+        put("/var/lib/kubelet/pod-resources", "");
     }};
     private final K3sContainerVersion version;
     private int minNodePort = 30000;
