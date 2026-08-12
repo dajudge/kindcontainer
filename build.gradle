@@ -41,7 +41,7 @@ dependencies {
     testImplementation 'com.sparkjava:spark-core:2.9.4'
     testImplementation "org.slf4j:slf4j-api:2.0.18"
 
-    testRuntimeOnly "org.junit.platform:junit-platform-launcher:6.1.2"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:6.1.3"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:$junitVersion"
     testRuntimeOnly "ch.qos.logback:logback-classic:1.5.38"
 }
