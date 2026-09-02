@@ -8,6 +8,7 @@ package com.dajudge.kindcontainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -21,6 +22,7 @@ import static java.util.Arrays.asList;
 public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWithKubeletContainer<SELF> {
     private static final Logger LOG = LoggerFactory.getLogger(K3sContainer.class);
     private static final int INTERNAL_API_SERVER_PORT = 6443;
+    private static final String KUBECONFIG_PATH = "/etc/rancher/k3s/k3s.yaml";
     private static final HashMap<String, String> TMP_FILESYSTEMS = new HashMap<String, String>() {{
         put("/run", "");
         put("/var/run", "");
@@ -29,6 +31,7 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
     private int minNodePort = 30000;
     private int maxNodePort = 32767;
     private Function<List<String>, List<String>> cmdLineModifier = Function.identity();
+    private String originalKubeconfig;
 
     public K3sContainer() {
         this(latest(K3sContainerVersion.class));
@@ -50,6 +53,7 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
 
     @Override
     public void start() {
+        originalKubeconfig = null;
         final List<String> cmdLine = cmdLineModifier.apply(new ArrayList<>(asList(
                 "server",
                 getDisabledComponentsCmdlineArg(),
@@ -96,7 +100,25 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
         return replaceServerInKubeconfig(server, getOriginalKubeconfig());
     }
 
-    private String getOriginalKubeconfig() {
-        return copyFileFromContainer("/etc/rancher/k3s/k3s.yaml", Utils::readString);
+    private synchronized String getOriginalKubeconfig() {
+        if (originalKubeconfig != null) {
+            return originalKubeconfig;
+        }
+
+        try {
+            final ExecResult result = execInContainer("cat", KUBECONFIG_PATH);
+            if (result.getExitCode() != 0) {
+                throw new IllegalStateException(
+                        String.format("Failed to read %s: %s", KUBECONFIG_PATH, result.getStderr())
+                );
+            }
+            originalKubeconfig = result.getStdout();
+            return originalKubeconfig;
+        } catch (final IOException e) {
+            throw new IllegalStateException("Failed to read " + KUBECONFIG_PATH, e);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while reading " + KUBECONFIG_PATH, e);
+        }
     }
 }
