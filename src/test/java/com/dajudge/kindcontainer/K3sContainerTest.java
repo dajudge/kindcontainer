@@ -39,4 +39,24 @@ class K3sContainerTest {
 
         verify(container, times(2)).execInContainer("cat", KUBECONFIG_PATH);
     }
+
+    @Test
+    void retriesSuccessfulButIncompleteKubeconfigRead() throws Exception {
+        final ExecResult incomplete = mock(ExecResult.class);
+        when(incomplete.getExitCode()).thenReturn(0);
+        when(incomplete.getStdout()).thenReturn("clusters: [");
+
+        final ExecResult succeeded = mock(ExecResult.class);
+        when(succeeded.getExitCode()).thenReturn(0);
+        when(succeeded.getStdout()).thenReturn(KUBECONFIG);
+
+        final K3sContainer<?> container = spy(new K3sContainer<>());
+        doReturn(incomplete, succeeded).when(container).execInContainer("cat", KUBECONFIG_PATH);
+
+        assertThrows(RuntimeException.class, () -> container.getKubeconfig("https://localhost:6443"));
+        container.getKubeconfig("https://localhost:6443");
+        container.getKubeconfig("https://localhost:6443");
+
+        verify(container, times(2)).execInContainer("cat", KUBECONFIG_PATH);
+    }
 }
