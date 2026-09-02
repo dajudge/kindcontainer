@@ -96,15 +96,18 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
     }
 
     @Override
-    protected String getKubeconfig(final String server) {
-        return replaceServerInKubeconfig(server, getOriginalKubeconfig());
-    }
-
-    private synchronized String getOriginalKubeconfig() {
+    protected synchronized String getKubeconfig(final String server) {
         if (originalKubeconfig != null) {
-            return originalKubeconfig;
+            return replaceServerInKubeconfig(server, originalKubeconfig);
         }
 
+        final String candidate = readOriginalKubeconfig();
+        final String kubeconfig = replaceServerInKubeconfig(server, candidate);
+        originalKubeconfig = candidate;
+        return kubeconfig;
+    }
+
+    private String readOriginalKubeconfig() {
         try {
             final ExecResult result = execInContainer("cat", KUBECONFIG_PATH);
             if (result.getExitCode() != 0) {
@@ -112,8 +115,7 @@ public class K3sContainer<SELF extends K3sContainer<SELF>> extends KubernetesWit
                         String.format("Failed to read %s: %s", KUBECONFIG_PATH, result.getStderr())
                 );
             }
-            originalKubeconfig = result.getStdout();
-            return originalKubeconfig;
+            return result.getStdout();
         } catch (final IOException e) {
             throw new IllegalStateException("Failed to read " + KUBECONFIG_PATH, e);
         } catch (final InterruptedException e) {
