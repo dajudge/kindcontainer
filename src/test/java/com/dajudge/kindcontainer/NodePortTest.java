@@ -1,7 +1,9 @@
 package com.dajudge.kindcontainer;
 
+import com.dajudge.kindcontainer.client.http.Response;
+import com.dajudge.kindcontainer.client.http.TinyHttpClient;
 import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
-import com.dajudge.kindcontainer.util.TestUtils;
+import com.github.dockerjava.api.command.InspectContainerResponse;
 import io.fabric8.kubernetes.api.model.*;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
@@ -12,12 +14,16 @@ import org.testcontainers.containers.Container.ExecResult;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.kubeletContainers;
 import static com.dajudge.kindcontainer.util.ContainerVersionHelpers.runWithK8s;
-import static com.dajudge.kindcontainer.util.TestUtils.*;
+import static com.dajudge.kindcontainer.util.TestUtils.createNewNamespace;
+import static com.dajudge.kindcontainer.util.TestUtils.createSimplePod;
+import static com.dajudge.kindcontainer.util.TestUtils.runWithClient;
 import static org.awaitility.Awaitility.await;
 
 public class NodePortTest {
@@ -51,16 +57,37 @@ public class NodePortTest {
                     .endSpec()
                     .build()));
 
+            final AtomicReference<String> lastHostProbeResult = new AtomicReference<>("not attempted");
             try {
                 waitForPodAndServiceEndpoint(k8s, pod, service);
+                final String url = "http://localhost:" + k8s.getMappedPort(30000);
                 await("testpod answers on node port")
                         .timeout(1, TimeUnit.MINUTES)
-                        .until(TestUtils.http("http://localhost:" + k8s.getMappedPort(30000)));
+                        .until(httpWithDiagnostics(url, lastHostProbeResult));
             } catch (final RuntimeException e) {
+                LOG.warn("NodePort diagnostics - last host probe result: {}", lastHostProbeResult.get());
                 logNodePortDiagnostics(k8s, pod, service);
                 throw e;
             }
         });
+    }
+
+    private Callable<Boolean> httpWithDiagnostics(
+            final String url,
+            final AtomicReference<String> lastResult
+    ) {
+        return () -> {
+            try {
+                final TinyHttpClient client = TinyHttpClient.newHttpClient().build();
+                try (final Response response = client.request().url(url).execute()) {
+                    lastResult.set("HTTP " + response.code());
+                    return response.code() == 200;
+                }
+            } catch (final IOException e) {
+                lastResult.set(e.getClass().getSimpleName() + ": " + e.getMessage());
+                return false;
+            }
+        };
     }
 
     private void waitForPodAndServiceEndpoint(
@@ -131,9 +158,21 @@ public class NodePortTest {
             }
         });
 
+        logDockerNetworkDiagnostics(k8s);
         logExec(k8s, "NodePort probe inside container", "wget -S -T 5 -O- http://127.0.0.1:30000/ || true");
         logExec(k8s, "KUBE-NODEPORTS rules", "iptables-save 2>&1 | grep -E 'KUBE-NODEPORTS|30000' || true");
         logExec(k8s, "nft rules mentioning NodePort", "nft list ruleset 2>&1 | grep -E '30000|KUBE-NODEPORTS' || true");
+    }
+
+    private void logDockerNetworkDiagnostics(final KubernetesWithKubeletContainer<?> k8s) {
+        try {
+            final InspectContainerResponse info = k8s.getContainerInfo();
+            LOG.warn("NodePort diagnostics - Docker port bindings: {}", info.getNetworkSettings().getPorts());
+            LOG.warn("NodePort diagnostics - Docker networks: {}", info.getNetworkSettings().getNetworks());
+            LOG.warn("NodePort diagnostics - Docker container IP: {}", info.getNetworkSettings().getIpAddress());
+        } catch (final RuntimeException e) {
+            LOG.warn("NodePort diagnostics - failed to inspect Docker network state", e);
+        }
     }
 
     private void logExec(
