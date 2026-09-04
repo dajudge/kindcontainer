@@ -14,7 +14,7 @@ def releaseTag = providers.exec {
 }.standardOutput.asText.get().trim()
 
 def gitStatus = providers.exec {
-    commandLine "git", "status", "--porcelain"
+    commandLine "git", "status", "--porcelain", "--untracked-files=no"
 }.standardOutput.asText.get().trim()
 
 version = gitStatus.isEmpty() && releaseTag.startsWith("release/")
