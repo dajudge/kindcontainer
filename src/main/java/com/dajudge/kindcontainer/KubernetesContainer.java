@@ -234,7 +234,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
      * @param serviceAccountNamespace the namespace of the service account
      * @param serviceAccountName      the name of the service account
      * @param autoCreateToken         if <code>true</code>, the service account will be created if it doesn't exist
-     * @return <code>this</code>
+     * @return the kubeconfig
      */
     public String getServiceAccountKubeconfig(
             final String serviceAccountNamespace,
