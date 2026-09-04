@@ -6,6 +6,8 @@ Before preparing a new release, **strongly prefer checking every pinned sidecar/
 
 Keep image versions pinned for reproducibility rather than switching defaults to floating `latest` tags. Treat updates that imply an API or behavior migration (for example, a new major version) as explicit migration work instead of routine hygiene, and let the full CI matrix validate compatibility before merging.
 
+Whenever a default or pinned container image changes, **update all documentation of that default in the same PR**, including default-image tables, examples, mirror/pre-pull guidance, and allowlist references. The documented image set must stay consistent with what an unconfigured container actually pulls.
+
 ## Release workflow
 
 Releases are cut from `master` using tags named `release/X.Y.Z` and GitHub releases named `vX.Y.Z`.
