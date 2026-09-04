@@ -2,7 +2,8 @@ package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
+import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -29,7 +30,10 @@ public class KubeconfigTest {
 
     private static KubernetesContainer<?> configureContainer(final KubernetesContainer<?> container) {
         return container.withKubeconfig(kubeconfig -> {
-            try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(kubeconfig))) {
+            try (final NamespacedKubernetesClient client = new KubernetesClientBuilder()
+                    .withConfig(fromKubeconfig(kubeconfig))
+                    .build()
+                    .adapt(NamespacedKubernetesClient.class)) {
                 client.inNamespace("default").configMaps().create(new ConfigMapBuilder()
                         .withNewMetadata()
                         .withName("test")

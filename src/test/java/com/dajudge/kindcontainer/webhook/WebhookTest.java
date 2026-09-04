@@ -6,7 +6,7 @@ import io.fabric8.kubernetes.api.model.ConfigMap;
 import io.fabric8.kubernetes.api.model.ConfigMapBuilder;
 import io.fabric8.kubernetes.api.model.Namespace;
 import io.fabric8.kubernetes.api.model.NamespaceBuilder;
-import io.fabric8.kubernetes.client.DefaultKubernetesClient;
+import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.KubernetesClientException;
 import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import org.junit.jupiter.api.DynamicTest;
@@ -74,7 +74,6 @@ public class WebhookTest {
             fail("ConfigMap should not have been accepted");
         } catch (final KubernetesClientException e) {
             if (e.getStatus().getCode() == 400) {
-                // This is what we expect: the validating webhook failed our request
                 return;
             }
             throw e;
@@ -102,7 +101,10 @@ public class WebhookTest {
         ) {
             final String namespaceName = UUID.randomUUID().toString();
             k8s.start();
-            try (final DefaultKubernetesClient client = new DefaultKubernetesClient(fromKubeconfig(k8s.getKubeconfig()))) {
+            try (final NamespacedKubernetesClient client = new KubernetesClientBuilder()
+                    .withConfig(fromKubeconfig(k8s.getKubeconfig()))
+                    .build()
+                    .adapt(NamespacedKubernetesClient.class)) {
                 final Namespace ns = new NamespaceBuilder()
                         .withNewMetadata()
                         .withName(namespaceName)
@@ -119,7 +121,6 @@ public class WebhookTest {
                     defaultNamespace.getMetadata().setLabels(labels);
                     return defaultNamespace;
                 });
-                // Admission controller webhook availability is unfortunately not exactly deterministic :-/
                 test.accept(client.inNamespace(namespaceName));
             }
         }
