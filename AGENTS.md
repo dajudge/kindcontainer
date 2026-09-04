@@ -1,5 +1,11 @@
 # AGENTS.md
 
+## Release hygiene
+
+Before preparing a new release, **strongly prefer checking every pinned sidecar/default container image against its upstream current stable release and updating stale images in dedicated PRs**. Do not silently carry obsolete sidecar versions into a new release when a supported update is available.
+
+Keep image versions pinned for reproducibility rather than switching defaults to floating `latest` tags. Treat updates that imply an API or behavior migration (for example, a new major version) as explicit migration work instead of routine hygiene, and let the full CI matrix validate compatibility before merging.
+
 ## Release workflow
 
 Releases are cut from `master` using tags named `release/X.Y.Z` and GitHub releases named `vX.Y.Z`.
