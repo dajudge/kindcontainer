@@ -1,0 +1,82 @@
+apiServer:
+  certSANs: [{{ .CertSANs }}]
+  extraArgs:
+    - name: runtime-config
+      value: ""
+    - name: service-node-port-range
+      value: "{{ .MinNodePort }}-{{ .MaxNodePort }}"
+apiVersion: kubeadm.k8s.io/v1beta4
+clusterName: kind
+controlPlaneEndpoint: {{ .NodeIp }}:6443
+controllerManager:
+  extraArgs:
+    - name: enable-hostpath-provisioner
+      value: "true"
+kind: ClusterConfiguration
+kubernetesVersion: {{ .KubernetesVersion }}
+networking:
+  podSubnet: {{ .PodSubnet }}
+  serviceSubnet: {{ .ServiceSubnet }}
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+bootstrapTokens:
+  - token: abcdef.0123456789abcdef
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: {{ .NodeIp }}
+  bindPort: 6443
+nodeRegistration:
+  criSocket: unix:///run/containerd/containerd.sock
+  kubeletExtraArgs:
+    - name: fail-swap-on
+      value: "false"
+    - name: node-ip
+      value: {{ .NodeIp }}
+    - name: node-labels
+      value: ""
+    - name: provider-id
+      value: kind://docker/kind/kindcontainer-control-plane
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+controlPlane:
+  localAPIEndpoint:
+    advertiseAddress: {{ .NodeIp }}
+    bindPort: 6443
+discovery:
+  bootstrapToken:
+    apiServerEndpoint: {{ .NodeIp }}:6443
+    token: abcdef.0123456789abcdef
+    unsafeSkipCAVerification: true
+kind: JoinConfiguration
+nodeRegistration:
+  criSocket: unix:///run/containerd/containerd.sock
+  kubeletExtraArgs:
+    - name: fail-swap-on
+      value: "false"
+    - name: node-ip
+      value: {{ .NodeIp }}
+    - name: node-labels
+      value: ""
+    - name: provider-id
+      value: kind://docker/kind/kindcontainer-control-plane
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+featureGates:
+  KubeletInUserNamespace: true
+cgroupDriver: systemd
+cgroupRoot: /kubelet
+evictionHard:
+  imagefs.available: 0%
+  nodefs.available: 0%
+  nodefs.inodesFree: 0%
+failSwapOn: false
+imageGCHighThresholdPercent: 100
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+conntrack:
+  maxPerCore: 0
+iptables:
+  minSyncPeriod: 1s
+kind: KubeProxyConfiguration
+mode: iptables
