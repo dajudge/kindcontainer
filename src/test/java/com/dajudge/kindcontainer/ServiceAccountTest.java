@@ -24,13 +24,19 @@ public class ServiceAccountTest {
     private void assertCreatesClientForServiceAccount(final KubernetesTestPackage<? extends KubernetesWithKubeletContainer<?>> testPkg) {
         runWithK8s(configureContainer(testPkg.newContainer()), k8s -> {
             final String kubeconfig1 = k8s.getKubeconfig();
-            try (final NamespacedKubernetesClient client = (NamespacedKubernetesClient) new KubernetesClientBuilder().withConfig(Config.fromKubeconfig(kubeconfig1)).build()) {
+            try (final NamespacedKubernetesClient client = new KubernetesClientBuilder()
+                    .withConfig(Config.fromKubeconfig(kubeconfig1))
+                    .build()
+                    .adapt(NamespacedKubernetesClient.class)) {
                 client.pods().inNamespace("my-namespace").list();
                 client.inNamespace("my-namespace").secrets().list();
             }
 
             final String kubeconfig2 = k8s.getServiceAccountKubeconfig("my-namespace", "my-service-account");
-            try (final NamespacedKubernetesClient client = (NamespacedKubernetesClient) new KubernetesClientBuilder().withConfig(Config.fromKubeconfig(kubeconfig2)).build()) {
+            try (final NamespacedKubernetesClient client = new KubernetesClientBuilder()
+                    .withConfig(Config.fromKubeconfig(kubeconfig2))
+                    .build()
+                    .adapt(NamespacedKubernetesClient.class)) {
                 client.pods().inNamespace("my-namespace").list();
                 try {
                     client.inNamespace("my-namespace").secrets().list();
