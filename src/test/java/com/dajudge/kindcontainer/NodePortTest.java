@@ -3,7 +3,6 @@ package com.dajudge.kindcontainer;
 import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import com.dajudge.kindcontainer.util.TestUtils;
 import io.fabric8.kubernetes.api.model.*;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 import org.slf4j.Logger;
@@ -147,8 +146,10 @@ public class NodePortTest {
             final ExecResult result = k8s.execInContainer("sh", "-c", command);
             LOG.warn("NodePort diagnostics - {} (exit {}):\nstdout:\n{}\nstderr:\n{}",
                     description, result.getExitCode(), result.getStdout(), result.getStderr());
-        } catch (final IOException | InterruptedException e) {
+        } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
+            LOG.warn("NodePort diagnostics - interrupted while collecting {}", description, e);
+        } catch (final IOException e) {
             LOG.warn("NodePort diagnostics - failed to collect {}", description, e);
         }
     }
