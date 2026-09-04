@@ -144,10 +144,28 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     @Override
     protected void containerIsStarting(final InspectContainerResponse containerInfo) {
         etcd = new EtcdContainer(etcdImage, etcdCa, containerInfo.getId());
-        etcd.start();
-        waitForApiServer();
-        waitForDefaultNamespace();
-        super.containerIsStarting(containerInfo);
+        try {
+            etcd.start();
+            waitForApiServer();
+            waitForDefaultNamespace();
+            super.containerIsStarting(containerInfo);
+        } catch (final RuntimeException e) {
+            logStartupDiagnostics();
+            throw e;
+        }
+    }
+
+    private void logStartupDiagnostics() {
+        try {
+            LOG.error("etcd logs:\n{}", etcd.getLogs());
+        } catch (final RuntimeException e) {
+            LOG.error("Failed to retrieve etcd logs", e);
+        }
+        try {
+            LOG.error("API server logs:\n{}", getLogs());
+        } catch (final RuntimeException e) {
+            LOG.error("Failed to retrieve API server logs", e);
+        }
     }
 
     private void waitForDefaultNamespace() {
