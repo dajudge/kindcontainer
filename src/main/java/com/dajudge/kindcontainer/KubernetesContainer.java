@@ -38,7 +38,7 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 public abstract class KubernetesContainer<T extends KubernetesContainer<T>> extends BaseGenericContainer<T> {
     private final List<ThrowingRunnable<Exception>> postStartupExecutions = new ArrayList<>();
-    private final AtomicReference<DockerImageName> helm3Image = new AtomicReference<>(DockerImageName.parse("alpine/helm:3.14.0"));
+    private final AtomicReference<DockerImageName> helm3Image = new AtomicReference<>(DockerImageName.parse("alpine/helm:3.21.4"));
     private final LazyContainer<Helm3Container<?>> helm3 = Helm3Container.lazy(helm3Image::get, this::getContainerId, this::getInternalKubeconfig);
     private final AtomicReference<DockerImageName> kubectlImage = new AtomicReference<>(latest(K3sContainerVersion.class).toImageSpec().getImage());
     private final LazyContainer<KubectlContainer<?, T>> kubectl = KubectlContainer.lazy(kubectlImage::get, this::getContainerId, this::getInternalKubeconfig, self());
