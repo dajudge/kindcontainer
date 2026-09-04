@@ -36,7 +36,7 @@ public class KubectlWaitFluentTest {
 
     @BeforeEach
     public void before() {
-        client = new KubernetesClientBuilder().withConfig(fromKubeconfig(k8s.getKubeconfig())).build().inNamespace(namespace);
+        client = ((NamespacedKubernetesClient) new KubernetesClientBuilder().withConfig(fromKubeconfig(k8s.getKubeconfig())).build()).inNamespace(namespace);
         client.namespaces().create(new NamespaceBuilder().withNewMetadata().withName(namespace).endMetadata().build());
     }
 
@@ -47,30 +47,22 @@ public class KubectlWaitFluentTest {
 
     @Test
     public void waits_for_condition() throws InterruptedException {
-        // Given
         final String name = createMinimalDeployment().getMetadata().getName();
         final WaitForDeploymentThread waitThread = new WaitForDeploymentThread(name);
         waitThread.start();
         waitThread.blockHereUntilWaiting();
-
-        // When
         markDeploymentAsTested(name);
-
-        // Then
         waitThread.blockHereUntilFinished();
         waitThread.assertWaitedSuccessfully();
     }
 
     @Test
     public void aborts_after_timeout() throws InterruptedException {
-        // Given
         final String name = createMinimalDeployment().getMetadata().getName();
         final WaitForDeploymentThread waitThread = new WaitForDeploymentThread(name, "1s");
         final long start = System.currentTimeMillis();
         waitThread.start();
         waitThread.blockHereUntilWaiting();
-
-        // Then
         waitThread.blockHereUntilFinished();
         waitThread.assertWaitTimedOut();
         final long end = System.currentTimeMillis();
