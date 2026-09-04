@@ -1,6 +1,5 @@
 plugins {
     id "java-library"
-    id "com.palantir.git-version" version "1.0.0"
     id "com.vanniktech.maven.publish" version "0.37.0"
 }
 
@@ -9,9 +8,17 @@ repositories {
     mavenCentral()
 }
 
-def versionDetails = versionDetails()
-version versionDetails.isCleanTag && gitVersion().startsWith("release/")
-        ? gitVersion().substring("release/".length())
+def releaseTag = providers.exec {
+    commandLine "git", "describe", "--tags", "--exact-match", "--match", "release/*", "HEAD"
+    ignoreExitValue = true
+}.standardOutput.asText.get().trim()
+
+def gitStatus = providers.exec {
+    commandLine "git", "status", "--porcelain", "--untracked-files=no"
+}.standardOutput.asText.get().trim()
+
+version = gitStatus.isEmpty() && releaseTag.startsWith("release/")
+        ? releaseTag.substring("release/".length())
         : System.currentTimeMillis() + "-SNAPSHOT"
 println "Build version $version"
 
