@@ -101,7 +101,10 @@ public class WebhookTest {
         ) {
             final String namespaceName = UUID.randomUUID().toString();
             k8s.start();
-            try (final NamespacedKubernetesClient client = (NamespacedKubernetesClient) new KubernetesClientBuilder().withConfig(fromKubeconfig(k8s.getKubeconfig())).build()) {
+            try (final NamespacedKubernetesClient client = new KubernetesClientBuilder()
+                    .withConfig(fromKubeconfig(k8s.getKubeconfig()))
+                    .build()
+                    .adapt(NamespacedKubernetesClient.class)) {
                 final Namespace ns = new NamespaceBuilder()
                         .withNewMetadata()
                         .withName(namespaceName)
