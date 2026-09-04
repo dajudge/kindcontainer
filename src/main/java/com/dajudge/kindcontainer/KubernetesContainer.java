@@ -42,7 +42,7 @@ public abstract class KubernetesContainer<T extends KubernetesContainer<T>> exte
     private final LazyContainer<Helm3Container<?>> helm3 = Helm3Container.lazy(helm3Image::get, this::getContainerId, this::getInternalKubeconfig);
     private final AtomicReference<DockerImageName> kubectlImage = new AtomicReference<>(latest(K3sContainerVersion.class).toImageSpec().getImage());
     private final LazyContainer<KubectlContainer<?, T>> kubectl = KubectlContainer.lazy(kubectlImage::get, this::getContainerId, this::getInternalKubeconfig, self());
-    private final AtomicReference<DockerImageName> nginxImage = new AtomicReference<>(DockerImageName.parse("nginx:1.23.3"));
+    private final AtomicReference<DockerImageName> nginxImage = new AtomicReference<>(DockerImageName.parse("nginx:1.30.4"));
     private final AtomicReference<DockerImageName> opensshServerImage = new AtomicReference<>(DockerImageName.parse("linuxserver/openssh-server:9.0_p1-r2-ls99"));
     private final AdmissionControllerManager admissionControllerManager = new AdmissionControllerManager(this, 10000, nginxImage::get, opensshServerImage::get);
     private boolean postStartupExecutionsDone;
