@@ -51,9 +51,8 @@ public class NodePortTest {
                     .endSpec()
                     .build()));
 
-            waitForPodAndServiceEndpoint(k8s, pod, service);
-
             try {
+                waitForPodAndServiceEndpoint(k8s, pod, service);
                 await("testpod answers on node port")
                         .timeout(1, TimeUnit.MINUTES)
                         .until(TestUtils.http("http://localhost:" + k8s.getMappedPort(30000)));
