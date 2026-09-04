@@ -54,3 +54,32 @@ jobs:
             build/test-results/test/
           if-no-files-found: ignore
           retention-days: 7
+      - name: Capture runner diagnostics
+        if: failure()
+        run: |
+          {
+            echo '=== timestamp ==='
+            date -u
+            echo '=== uptime/load ==='
+            uptime
+            echo '=== memory ==='
+            free -h
+            echo '=== disk ==='
+            df -h
+            echo '=== docker info ==='
+            docker info
+            echo '=== docker disk usage ==='
+            docker system df
+            echo '=== docker containers ==='
+            docker ps -a
+            echo '=== docker resource usage ==='
+            docker stats --no-stream
+          } > runner-diagnostics.txt 2>&1 || true
+          cat runner-diagnostics.txt
+      - name: Upload runner diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-diagnostics-${{ strategy.job-index }}
+          path: runner-diagnostics.txt
+          retention-days: 7
