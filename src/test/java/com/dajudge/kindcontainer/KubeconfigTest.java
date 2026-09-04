@@ -30,7 +30,10 @@ public class KubeconfigTest {
 
     private static KubernetesContainer<?> configureContainer(final KubernetesContainer<?> container) {
         return container.withKubeconfig(kubeconfig -> {
-            try (final NamespacedKubernetesClient client = (NamespacedKubernetesClient) new KubernetesClientBuilder().withConfig(fromKubeconfig(kubeconfig)).build()) {
+            try (final NamespacedKubernetesClient client = new KubernetesClientBuilder()
+                    .withConfig(fromKubeconfig(kubeconfig))
+                    .build()
+                    .adapt(NamespacedKubernetesClient.class)) {
                 client.inNamespace("default").configMaps().create(new ConfigMapBuilder()
                         .withNewMetadata()
                         .withName("test")
