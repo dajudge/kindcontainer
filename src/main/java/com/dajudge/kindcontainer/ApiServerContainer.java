@@ -151,7 +151,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
     }
 
     private void waitForDefaultNamespace() {
-        await().timeout(10, SECONDS)
+        await().timeout(60, SECONDS)
                 .until(() -> client().v1().namespaces().find("default"), Optional::isPresent);
     }
 
