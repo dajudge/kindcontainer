@@ -2,9 +2,9 @@ package com.dajudge.kindcontainer;
 
 import com.dajudge.kindcontainer.util.ContainerVersionHelpers.KubernetesTestPackage;
 import io.fabric8.kubernetes.client.Config;
-import io.fabric8.kubernetes.client.KubernetesClient;
 import io.fabric8.kubernetes.client.KubernetesClientBuilder;
 import io.fabric8.kubernetes.client.KubernetesClientException;
+import io.fabric8.kubernetes.client.NamespacedKubernetesClient;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.TestFactory;
 
@@ -23,16 +23,14 @@ public class ServiceAccountTest {
 
     private void assertCreatesClientForServiceAccount(final KubernetesTestPackage<? extends KubernetesWithKubeletContainer<?>> testPkg) {
         runWithK8s(configureContainer(testPkg.newContainer()), k8s -> {
-            // First do a sanity check w/ admin privileges
             final String kubeconfig1 = k8s.getKubeconfig();
-            try (final KubernetesClient client = new KubernetesClientBuilder().withConfig(Config.fromKubeconfig(kubeconfig1)).build()) {
+            try (final NamespacedKubernetesClient client = (NamespacedKubernetesClient) new KubernetesClientBuilder().withConfig(Config.fromKubeconfig(kubeconfig1)).build()) {
                 client.pods().inNamespace("my-namespace").list();
                 client.inNamespace("my-namespace").secrets().list();
             }
 
-            // Now try again with limited privileges
             final String kubeconfig2 = k8s.getServiceAccountKubeconfig("my-namespace", "my-service-account");
-            try (final KubernetesClient client = new KubernetesClientBuilder().withConfig(Config.fromKubeconfig(kubeconfig2)).build()) {
+            try (final NamespacedKubernetesClient client = (NamespacedKubernetesClient) new KubernetesClientBuilder().withConfig(Config.fromKubeconfig(kubeconfig2)).build()) {
                 client.pods().inNamespace("my-namespace").list();
                 try {
                     client.inNamespace("my-namespace").secrets().list();
