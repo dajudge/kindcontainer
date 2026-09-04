@@ -36,7 +36,11 @@ public class KubectlWaitFluentTest {
 
     @BeforeEach
     public void before() {
-        client = ((NamespacedKubernetesClient) new KubernetesClientBuilder().withConfig(fromKubeconfig(k8s.getKubeconfig())).build()).inNamespace(namespace);
+        client = new KubernetesClientBuilder()
+                .withConfig(fromKubeconfig(k8s.getKubeconfig()))
+                .build()
+                .adapt(NamespacedKubernetesClient.class)
+                .inNamespace(namespace);
         client.namespaces().create(new NamespaceBuilder().withNewMetadata().withName(namespace).endMetadata().build());
     }
 
