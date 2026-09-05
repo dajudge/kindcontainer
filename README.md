@@ -223,7 +223,7 @@ by default. These are the images used by Kindcontainer if you don't override the
 |    Fluent API `helm`    |          `alpine/helm`           |              `3.14.0`              |
 |  Fluent API `kubectl`   |        `bitnami/kubectl`         |       `1.21.9-debian-10-r10`       |
 |    Webhooks `nginx`     |             `nginx`              |              `1.23.3`              |
-| Webhooks OpenSSH Server |   `linuxserver/openssh-server`   |          `9.0_p1-r2-ls99`          |         
+| Webhooks OpenSSH Server |   `linuxserver/openssh-server`   |        `10.3_p1-r1-ls235`          |         
 
 ### Kubernetes images
 
@@ -263,7 +263,7 @@ are being used to start those support containers use the `withNginxImage()` and 
 ```java
 ApiServerContainer<?> container = new ApiServerContainer<>()
         .withNginxImage(DockerImageName.parse("my-registry/nginx:1.23.3"))
-        .withOpensshServerImage(DockerImageName.parse("my-registry/openssh-server:9.0_p1-r2-ls99"));
+        .withOpensshServerImage(DockerImageName.parse("my-registry/openssh-server:10.3_p1-r1-ls235"));
 ```
 
 ## Testing admission webhooks

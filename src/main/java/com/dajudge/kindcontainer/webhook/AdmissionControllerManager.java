@@ -64,7 +64,7 @@ public class AdmissionControllerManager {
                 .withEnv("PASSWORD_ACCESS", "true")
                 .withEnv("USER_NAME", "t0ny")
                 .withEnv("USER_PASSWORD", "p3pp3r")
-                .withCopyToContainer(Transferable.of(sshdConfig), "/etc/ssh/sshd_config");
+                .withCopyToContainer(Transferable.of(sshdConfig), "/config/sshd/sshd_config.d/kindcontainer.conf");
         final String nginxConfig = nginxConfig();
         LOG.debug("Admission controller reverse proxy nginx config: {}", nginxConfig);
         nginx = new GenericContainer<>(nginxImage.get())
