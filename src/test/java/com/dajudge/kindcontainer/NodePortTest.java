@@ -146,21 +146,25 @@ public class NodePortTest {
         final String namespace = pod.getMetadata().getNamespace();
         final String serviceName = service.getMetadata().getName();
 
-        runWithClient(k8s, client -> {
-            final Pod currentPod = client.pods().inNamespace(namespace).withName(pod.getMetadata().getName()).get();
-            final Service currentService = client.services().inNamespace(namespace).withName(serviceName).get();
-            final Endpoints endpoints = client.endpoints().inNamespace(namespace).withName(serviceName).get();
+        try {
+            runWithClient(k8s, client -> {
+                final Pod currentPod = client.pods().inNamespace(namespace).withName(pod.getMetadata().getName()).get();
+                final Service currentService = client.services().inNamespace(namespace).withName(serviceName).get();
+                final Endpoints endpoints = client.endpoints().inNamespace(namespace).withName(serviceName).get();
 
-            LOG.warn("NodePort diagnostics - mapped host port: {}", k8s.getMappedPort(30000));
-            LOG.warn("NodePort diagnostics - pod: {}", currentPod);
-            LOG.warn("NodePort diagnostics - service: {}", currentService);
-            LOG.warn("NodePort diagnostics - endpoints: {}", endpoints);
-            LOG.warn("NodePort diagnostics - nodes: {}", client.nodes().list().getItems());
+                LOG.warn("NodePort diagnostics - mapped host port: {}", k8s.getMappedPort(30000));
+                LOG.warn("NodePort diagnostics - pod: {}", currentPod);
+                LOG.warn("NodePort diagnostics - service: {}", currentService);
+                LOG.warn("NodePort diagnostics - endpoints: {}", endpoints);
+                LOG.warn("NodePort diagnostics - nodes: {}", client.nodes().list().getItems());
 
-            if (currentPod != null && currentPod.getStatus() != null && currentPod.getStatus().getPodIP() != null) {
-                logExec(k8s, "pod IP probe", "wget -S -T 5 -O- http://" + currentPod.getStatus().getPodIP() + ":80/ || true");
-            }
-        });
+                if (currentPod != null && currentPod.getStatus() != null && currentPod.getStatus().getPodIP() != null) {
+                    logExec(k8s, "pod IP probe", "wget -S -T 5 -O- http://" + currentPod.getStatus().getPodIP() + ":80/ || true");
+                }
+            });
+        } catch (final RuntimeException e) {
+            LOG.warn("NodePort diagnostics - failed to collect Kubernetes API state", e);
+        }
 
         logDockerNetworkDiagnostics(k8s);
         logExec(k8s, "NodePort probe inside container", "wget -S -T 5 -O- http://127.0.0.1:30000/ || true");
@@ -191,7 +195,7 @@ public class NodePortTest {
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             LOG.warn("NodePort diagnostics - interrupted while collecting {}", description, e);
-        } catch (final IOException e) {
+        } catch (final IOException | RuntimeException e) {
             LOG.warn("NodePort diagnostics - failed to collect {}", description, e);
         }
     }
