@@ -37,25 +37,29 @@ public class NodePortTest {
 
     private void assertExposesNodePort(final KubernetesTestPackage<? extends KubernetesWithKubeletContainer<?>> testPkg) {
         runWithK8s(configureContainer(testPkg.newContainer()), k8s -> {
-            final Pod pod = runWithClient(k8s, client -> createSimplePod(client, createNewNamespace(client)));
-            final Service service = runWithClient(k8s, client -> client.services().create(new ServiceBuilder()
-                    .withNewMetadata()
-                    .withName("nginx")
-                    .withNamespace(pod.getMetadata().getNamespace())
-                    .endMetadata()
-                    .withNewSpec()
-                    .withType("NodePort")
-                    .withSelector(new HashMap<String, String>() {{
-                        put("app", "nginx");
-                    }})
-                    .withPorts(new ServicePortBuilder()
-                            .withNodePort(30000)
-                            .withPort(80)
-                            .withTargetPort(new IntOrString(80))
-                            .withProtocol("TCP")
-                            .build())
-                    .endSpec()
-                    .build()));
+            final Pod pod = runWithClient(k8s, client -> {
+                return createSimplePod(client, createNewNamespace(client));
+            });
+            final Service service = runWithClient(k8s, client -> {
+                return client.services().create(new ServiceBuilder()
+                        .withNewMetadata()
+                        .withName("nginx")
+                        .withNamespace(pod.getMetadata().getNamespace())
+                        .endMetadata()
+                        .withNewSpec()
+                        .withType("NodePort")
+                        .withSelector(new HashMap<String, String>() {{
+                            put("app", "nginx");
+                        }})
+                        .withPorts(new ServicePortBuilder()
+                                .withNodePort(30000)
+                                .withPort(80)
+                                .withTargetPort(new IntOrString(80))
+                                .withProtocol("TCP")
+                                .build())
+                        .endSpec()
+                        .build());
+            });
 
             final AtomicReference<String> lastHostProbeResult = new AtomicReference<>("not attempted");
             try {
