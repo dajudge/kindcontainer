@@ -3,6 +3,7 @@ package com.dajudge.kindcontainer;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.GenericContainer;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -55,6 +56,29 @@ public class LoggingTest {
                     "Throwable type and message must be present");
             assertTrue(output.contains("at com.dajudge.kindcontainer.LoggingTest.logging_works"),
                     "Throwable stack trace must be present");
+        } finally {
+            System.setOut(out);
+        }
+    }
+
+    @Test
+    public void testcontainers_logging_works() {
+        final PrintStream out = System.out;
+        try {
+            final ByteArrayOutputStream temp = new ByteArrayOutputStream();
+            System.setOut(new PrintStream(new BufferedOutputStream(temp)));
+
+            try (GenericContainer<?> container = new GenericContainer<>("alpine:3.20")
+                    .withCommand("sh", "-c", "echo testcontainers-logging-smoke")) {
+                container.start();
+            }
+            System.out.flush();
+
+            final String output = new String(temp.toByteArray(), UTF_8);
+            assertTrue(output.contains("GenericContainer"),
+                    "Testcontainers lifecycle logs must reach the configured Logback appender");
+            assertTrue(output.contains("alpine:3.20"),
+                    "Testcontainers lifecycle logs must identify the container image");
         } finally {
             System.setOut(out);
         }
