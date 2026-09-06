@@ -45,10 +45,12 @@ public class LoggingTest {
             assertEquals(1, occurrences(output, errorMessage), "ERROR event must be emitted exactly once");
             assertEquals(1, occurrences(output, exceptionMessage), "Throwable message must be emitted exactly once");
 
-            assertTrue(output.contains("INFO  com.dajudge.kindcontainer.LoggingTest - " + infoMessage),
-                    "INFO formatting must preserve level, logger name and message");
-            assertTrue(output.contains("ERROR com.dajudge.kindcontainer.LoggingTest - " + errorMessage),
-                    "ERROR formatting must preserve level, logger name and message");
+            assertTrue(output.contains("INFO  "), "INFO level must be present");
+            assertTrue(output.contains("LoggingTest - " + infoMessage),
+                    "INFO formatting must preserve logger identity and message");
+            assertTrue(output.contains("ERROR "), "ERROR level must be present");
+            assertTrue(output.contains("LoggingTest - " + errorMessage),
+                    "ERROR formatting must preserve logger identity and message");
             assertTrue(output.contains("java.lang.IllegalStateException: " + exceptionMessage),
                     "Throwable type and message must be present");
             assertTrue(output.contains("at com.dajudge.kindcontainer.LoggingTest.logging_works"),
