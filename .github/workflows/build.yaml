@@ -106,12 +106,26 @@ jobs:
           distribution: 'temurin'
       - name: Set up Docker with Colima
         run: |
-          brew install docker colima
-          colima start --network-address --cpu 4 --memory 8
+          brew install docker colima qemu
+          colima start --vm-type=qemu --network-address --cpu 4 --memory 8
           echo "DOCKER_HOST=unix://${HOME}/.colima/default/docker.sock" >> $GITHUB_ENV
           echo "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock" >> $GITHUB_ENV
           echo "TESTCONTAINERS_HOST_OVERRIDE=$(colima ls -j | jq -r '.address')" >> $GITHUB_ENV
           docker info
+      - name: Capture Colima diagnostics
+        if: failure()
+        run: |
+          {
+            echo '=== colima status ==='
+            colima status || true
+            echo '=== colima list ==='
+            colima list || true
+            echo '=== lima host agent stderr ==='
+            cat "$HOME/.colima/_lima/colima/ha.stderr.log" 2>/dev/null || true
+            echo '=== lima serial logs ==='
+            cat "$HOME"/.colima/_lima/colima/serial*.log 2>/dev/null || true
+          } > macos-smoke-diagnostics.txt 2>&1
+          cat macos-smoke-diagnostics.txt
       - name: Run smoke tests
         env:
           CONTAINER_FILTER: ${{ matrix.version }}
@@ -124,5 +138,13 @@ jobs:
           path: |
             build/reports/tests/test/
             build/test-results/test/
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload macOS smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-smoke-diagnostics-${{ matrix.version }}
+          path: macos-smoke-diagnostics.txt
           if-no-files-found: ignore
           retention-days: 7
