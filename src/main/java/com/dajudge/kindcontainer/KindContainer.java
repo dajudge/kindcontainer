@@ -51,6 +51,7 @@ public class KindContainer<T extends KindContainer<T>> extends KubernetesWithKub
     private static final Map<KubernetesVersionDescriptor, String> KUBEADM_CONFIGS = new HashMap<KubernetesVersionDescriptor, String>() {{
         put(new KubernetesVersionDescriptor(1, 21, 0), "kubeadm-1.21.0.yaml");
         put(new KubernetesVersionDescriptor(1, 24, 0), "kubeadm-1.24.0.yaml");
+        put(new KubernetesVersionDescriptor(1, 36, 0), "kubeadm-1.36.0.yaml");
     }};
     private static final String KUBECONFIG_PATH = "/etc/kubernetes/admin.conf";
     private static final String NODE_NAME = "kind";
