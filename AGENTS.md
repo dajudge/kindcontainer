@@ -1,5 +1,23 @@
 # AGENTS.md
 
+## Pull request procedure
+
+For every non-trivial PR, treat automated review feedback as part of the normal completion loop rather than as optional follow-up.
+
+After pushing changes:
+
+1. Wait for the initial automated/Codex review to complete.
+2. Read every review finding in context and verify it against the actual code and CI evidence; do not accept a finding blindly just because it is marked high priority.
+3. If a finding is valid, implement the fix in the same PR when appropriate.
+4. Reply to the review thread with a concise explanation of what changed, including any important nuance if the review diagnosis was overstated or contradicted by CI.
+5. Mark the addressed review thread resolved.
+6. Request a fresh Codex review on the updated head.
+7. Repeat until the latest review has no unresolved actionable findings and CI is green, except for failures that are clearly unrelated and already understood/documented.
+
+When CI evidence contradicts a review claim, prefer empirical verification over assumption. For example, confirm that the relevant code path or configuration was actually exercised before dismissing or accepting the finding.
+
+When rebasing or rebuilding an existing PR branch, **do not push intermediate work-in-progress states to the PR branch**. Build and verify the complete rebased result off-branch first, then move/update the PR branch once to the final commit. In particular, never temporarily move the PR head to exactly `master`, because GitHub may automatically close the PR when the head becomes identical to its base. Avoid transient partial states that trigger unnecessary CI, review churn, conflicts, or close/reopen events.
+
 ## Release hygiene
 
 Before preparing a new release, **strongly prefer checking every pinned sidecar/default container image against its upstream current stable release and updating stale images in dedicated PRs**. Do not silently carry obsolete sidecar versions into a new release when a supported update is available.
