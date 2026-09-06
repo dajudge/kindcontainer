@@ -10,13 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      smoke-matrix: ${{ steps.set-matrix.outputs.smoke-matrix }}
     steps:
       - uses: actions/checkout@v4
       - id: set-matrix
         run: |
           matrix=$( cat k8s-versions.json | jq '{version: [keys[] as $k | .[$k].versions[] | .k8s as $v | "\($k) \($v)"]}' -c )
+          smoke_matrix=$( cat k8s-versions.json | jq '{version: [to_entries[] | "\(.key) \(.value.versions[-1].k8s)"]}' -c )
           echo $matrix
+          echo $smoke_matrix
           echo "matrix=$matrix" >> $GITHUB_OUTPUT
+          echo "smoke-matrix=$smoke_matrix" >> $GITHUB_OUTPUT
 
   check-matrix:
     runs-on: ubuntu-latest
@@ -25,8 +29,11 @@ jobs:
       - name: Check matrix definition
         run: |
           matrix='${{ needs.matrix.outputs.matrix }}'
+          smoke_matrix='${{ needs.matrix.outputs.smoke-matrix }}'
           echo $matrix
           echo $matrix | jq .
+          echo $smoke_matrix
+          echo $smoke_matrix | jq .
 
   build:
     runs-on: ubuntu-latest
@@ -82,4 +89,40 @@ jobs:
         with:
           name: runner-diagnostics-${{ strategy.job-index }}
           path: runner-diagnostics.txt
+          retention-days: 7
+
+  macos-smoke:
+    runs-on: macos-latest
+    needs: matrix
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(needs.matrix.outputs.smoke-matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Set up Docker with Colima
+        run: |
+          brew install docker colima
+          colima start --network-address --cpu 4 --memory 8
+          echo "DOCKER_HOST=unix://${HOME}/.colima/default/docker.sock" >> $GITHUB_ENV
+          echo "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock" >> $GITHUB_ENV
+          echo "TESTCONTAINERS_HOST_OVERRIDE=$(colima ls -j | jq -r '.address')" >> $GITHUB_ENV
+          docker info
+      - name: Run smoke tests
+        env:
+          CONTAINER_FILTER: ${{ matrix.version }}
+        run: ./gradlew test
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-test-reports-${{ matrix.version }}
+          path: |
+            build/reports/tests/test/
+            build/test-results/test/
+          if-no-files-found: ignore
           retention-days: 7
