@@ -40,7 +40,7 @@ dependencies {
     implementation "org.bouncycastle:bcpkix-jdk18on:1.85"
 
     testImplementation "org.testcontainers:testcontainers-junit-jupiter:$testcontainersVersion"
-    testImplementation "io.fabric8:kubernetes-client:7.8.0"
+    testImplementation "io.fabric8:kubernetes-client:7.9.0"
     testImplementation "org.awaitility:awaitility:4.3.0"
     testImplementation "org.mockito:mockito-core:5.23.0"
     testImplementation "org.junit.jupiter:junit-jupiter-api:$junitVersion"
