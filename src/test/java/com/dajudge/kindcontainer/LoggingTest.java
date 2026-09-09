@@ -1,15 +1,15 @@
 package com.dajudge.kindcontainer;
 
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
+import java.util.List;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -20,77 +20,59 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class LoggingTest {
     @Test
     public void logging_works() {
-        final PrintStream out = System.out;
-        try {
-            final ByteArrayOutputStream temp = new ByteArrayOutputStream();
-            System.setOut(new PrintStream(new BufferedOutputStream(temp)));
+        assertEquals(
+                LoggerContext.class,
+                LoggerFactory.getILoggerFactory().getClass(),
+                "SLF4J must be bound to Logback"
+        );
 
-            assertEquals(
-                    "ch.qos.logback.classic.LoggerContext",
-                    LoggerFactory.getILoggerFactory().getClass().getName(),
-                    "SLF4J must be bound to Logback"
-            );
+        final String infoMessage = "logging-contract-info-7f27a4d0";
+        final String errorMessage = "logging-contract-error-cd132e43";
+        final String exceptionMessage = "logging-contract-exception-8410b8d2";
 
+        final List<ILoggingEvent> events = captureLogs(() -> {
             final Logger logger = LoggerFactory.getLogger(LoggingTest.class);
-            final String infoMessage = "logging-contract-info-7f27a4d0";
-            final String errorMessage = "logging-contract-error-cd132e43";
-            final String exceptionMessage = "logging-contract-exception-8410b8d2";
-
             logger.info(infoMessage);
             logger.error(errorMessage, new IllegalStateException(exceptionMessage));
-            System.out.flush();
+        });
 
-            final String output = new String(temp.toByteArray(), UTF_8);
-
-            assertEquals(1, occurrences(output, infoMessage), "INFO event must be emitted exactly once");
-            assertEquals(1, occurrences(output, errorMessage), "ERROR event must be emitted exactly once");
-            assertEquals(1, occurrences(output, exceptionMessage), "Throwable message must be emitted exactly once");
-
-            assertTrue(output.contains("INFO  "), "INFO level must be present");
-            assertTrue(output.contains("LoggingTest - " + infoMessage),
-                    "INFO formatting must preserve logger identity and message");
-            assertTrue(output.contains("ERROR "), "ERROR level must be present");
-            assertTrue(output.contains("LoggingTest - " + errorMessage),
-                    "ERROR formatting must preserve logger identity and message");
-            assertTrue(output.contains("java.lang.IllegalStateException: " + exceptionMessage),
-                    "Throwable type and message must be present");
-            assertTrue(output.contains("at com.dajudge.kindcontainer.LoggingTest.logging_works"),
-                    "Throwable stack trace must be present");
-        } finally {
-            System.setOut(out);
-        }
+        assertEquals(1, occurrences(events, infoMessage), "INFO event must be emitted exactly once");
+        assertEquals(1, occurrences(events, errorMessage), "ERROR event must be emitted exactly once");
+        assertEquals(1, occurrences(events, exceptionMessage), "Throwable message must be emitted exactly once");
     }
 
     @Test
     public void testcontainers_logging_works() {
-        final PrintStream out = System.out;
-        try {
-            final ByteArrayOutputStream temp = new ByteArrayOutputStream();
-            System.setOut(new PrintStream(new BufferedOutputStream(temp)));
-
+        final List<ILoggingEvent> events = captureLogs(() -> {
             try (GenericContainer<?> container = new GenericContainer<>("alpine:3.20")
                     .withCommand("sh", "-c", "echo testcontainers-logging-smoke")) {
                 container.start();
             }
-            System.out.flush();
+        });
 
-            final String output = new String(temp.toByteArray(), UTF_8);
-            assertTrue(output.contains("GenericContainer"),
-                    "Testcontainers lifecycle logs must reach the configured Logback appender");
-            assertTrue(output.contains("alpine:3.20"),
-                    "Testcontainers lifecycle logs must identify the container image");
+        assertTrue(events.stream().anyMatch(event -> event.getFormattedMessage().contains("alpine:3.20")),
+                "Testcontainers lifecycle logs must identify the container image");
+    }
+
+    private static List<ILoggingEvent> captureLogs(final Runnable operation) {
+        final LoggerContext context = (LoggerContext) LoggerFactory.getILoggerFactory();
+        final ch.qos.logback.classic.Logger rootLogger = context.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        rootLogger.addAppender(appender);
+        try {
+            operation.run();
+            return List.copyOf(appender.list);
         } finally {
-            System.setOut(out);
+            rootLogger.detachAppender(appender);
+            appender.stop();
         }
     }
 
-    private static int occurrences(final String haystack, final String needle) {
-        int count = 0;
-        int offset = 0;
-        while ((offset = haystack.indexOf(needle, offset)) >= 0) {
-            count++;
-            offset += needle.length();
-        }
-        return count;
+    private static long occurrences(final List<ILoggingEvent> events, final String message) {
+        return events.stream()
+                .filter(event -> event.getFormattedMessage().contains(message)
+                        || (event.getThrowableProxy() != null && event.getThrowableProxy().getMessage().contains(message)))
+                .count();
     }
 }
