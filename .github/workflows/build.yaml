@@ -92,7 +92,7 @@ jobs:
           retention-days: 7
 
   macos-smoke:
-    runs-on: macos-15-intel
+    runs-on: macos-15
     needs: matrix
     strategy:
       fail-fast: false
@@ -107,17 +107,16 @@ jobs:
       - name: Set up Docker with Colima
         run: |
           brew install docker colima qemu
-          colima start --vm-type=qemu --network-address --cpu 4 --memory 8
+          colima start --vm-type=qemu --cpu 4 --memory 8
           echo "DOCKER_HOST=unix://${HOME}/.colima/default/docker.sock" >> $GITHUB_ENV
           echo "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock" >> $GITHUB_ENV
-          echo "TESTCONTAINERS_HOST_OVERRIDE=$(colima ls -j | jq -r '.address')" >> $GITHUB_ENV
+          echo "TESTCONTAINERS_HOST_OVERRIDE=127.0.0.1" >> $GITHUB_ENV
           docker info
       - name: Verify Colima networking
         run: |
           set -euo pipefail
-          colima_address=$(colima ls -j | jq -r '.address')
           docker run --detach --rm --name colima-network-preflight -p 18080:80 nginx:alpine
-          curl --fail --retry 10 --retry-connrefused --retry-delay 1 "http://${colima_address}:18080"
+          curl --fail --retry 10 --retry-connrefused --retry-delay 1 "http://127.0.0.1:18080"
           docker rm -f colima-network-preflight
       - name: Run smoke tests
         env:
