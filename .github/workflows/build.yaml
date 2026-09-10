@@ -92,7 +92,7 @@ jobs:
           retention-days: 7
 
   macos-smoke:
-    runs-on: macos-15
+    runs-on: macos-15-intel
     needs: matrix
     strategy:
       fail-fast: false
@@ -106,8 +106,8 @@ jobs:
           distribution: 'temurin'
       - name: Set up Docker with Colima
         run: |
-          brew install docker colima
-          colima start --vm-type=vz --network-address --cpu 4 --memory 8
+          brew install docker colima qemu
+          colima start --vm-type=qemu --network-address --cpu 4 --memory 8
           echo "DOCKER_HOST=unix://${HOME}/.colima/default/docker.sock" >> $GITHUB_ENV
           echo "TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock" >> $GITHUB_ENV
           echo "TESTCONTAINERS_HOST_OVERRIDE=$(colima ls -j | jq -r '.address')" >> $GITHUB_ENV
