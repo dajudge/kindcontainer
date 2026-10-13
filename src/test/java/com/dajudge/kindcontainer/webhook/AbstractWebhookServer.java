@@ -2,10 +2,10 @@ package com.dajudge.kindcontainer.webhook;
 
 import com.dajudge.kindcontainer.client.http.Response;
 import com.dajudge.kindcontainer.client.http.TinyHttpClient;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.fabric8.kubernetes.api.model.HasMetadata;
 import io.fabric8.kubernetes.api.model.admission.v1.AdmissionReview;
 import io.fabric8.kubernetes.api.model.admission.v1.AdmissionReviewBuilder;
+import io.fabric8.kubernetes.client.utils.Serialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import spark.Service;
@@ -17,7 +17,6 @@ import static org.testcontainers.shaded.org.awaitility.Awaitility.await;
 
 public abstract class AbstractWebhookServer implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractWebhookServer.class);
-    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     private final String path;
     private Service service;
@@ -33,7 +32,7 @@ public abstract class AbstractWebhookServer implements AutoCloseable {
         LOG.info("Starting webhook server: {}", getClass().getSimpleName());
         service = Service.ignite().port(0);
         service.post(path, (req, res) -> {
-            final AdmissionReview review = OBJECT_MAPPER.readValue(req.body(), AdmissionReview.class);
+            final AdmissionReview review = Serialization.unmarshal(req.body(), AdmissionReview.class);
             final HasMetadata object = (HasMetadata) review.getRequest().getObject();
             if(!isTestResource(object)) {
                 if(LOG.isDebugEnabled()) {
@@ -53,7 +52,7 @@ public abstract class AbstractWebhookServer implements AutoCloseable {
             }else{
                 LOG.info("Handling admission review: {} {}", getClass().getSimpleName(), displayName(object));
             }
-            return OBJECT_MAPPER.writeValueAsString(review(review));
+            return Serialization.asJson(review(review));
         });
         service.init();
         service.awaitInitialization();
