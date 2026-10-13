@@ -88,13 +88,11 @@ public class RequestBuilder {
     }
 
     private Response.ResponseWrapper executeRequest(final HttpURLConnection conn) throws IOException {
-        final int responseCode = conn.getResponseCode();
-        return new Response.ResponseWrapper(
-                responseCode,
-                conn.getResponseMessage(),
-                responseCode >= 400 ? conn.getErrorStream() : conn.getInputStream(),
-                conn
-        );
+        try {
+            return new Response.ResponseWrapper(conn.getResponseCode(), conn.getResponseMessage(), conn.getInputStream(), conn);
+        } catch(final IOException e) {
+            return new Response.ResponseWrapper(conn.getResponseCode(), conn.getResponseMessage(), conn.getErrorStream(), conn);
+        }
     }
 
     private static int timeoutMillis(final Duration timeout, final String description) {
