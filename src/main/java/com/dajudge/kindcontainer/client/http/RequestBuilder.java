@@ -5,12 +5,13 @@ import org.slf4j.LoggerFactory;
 
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLSocketFactory;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.time.Duration;
+import java.util.Objects;
 
 public class RequestBuilder {
     private static final Logger LOG = LoggerFactory.getLogger(RequestBuilder.class);
@@ -18,6 +19,8 @@ public class RequestBuilder {
     private URL url;
     private String method = "GET";
     private RequestBody body;
+    private int connectTimeoutMillis;
+    private int readTimeoutMillis;
 
     public RequestBuilder(final SSLSocketFactory sslSocketFactory) {
 
@@ -39,6 +42,22 @@ public class RequestBuilder {
         return this;
     }
 
+    /**
+     * Limits how long establishing the connection may block. A zero duration keeps the JDK default of no timeout.
+     */
+    public RequestBuilder connectTimeout(final Duration timeout) {
+        this.connectTimeoutMillis = timeoutMillis(timeout, "connect timeout");
+        return this;
+    }
+
+    /**
+     * Limits how long reading the response may block. A zero duration keeps the JDK default of no timeout.
+     */
+    public RequestBuilder readTimeout(final Duration timeout) {
+        this.readTimeoutMillis = timeoutMillis(timeout, "read timeout");
+        return this;
+    }
+
     public Response execute() throws IOException {
         if (url == null) {
             throw new IllegalStateException("No URL specified");
@@ -47,6 +66,8 @@ public class RequestBuilder {
             throw new IllegalStateException("No METHOD specified");
         }
         final HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setConnectTimeout(connectTimeoutMillis);
+        conn.setReadTimeout(readTimeoutMillis);
         if (conn instanceof HttpsURLConnection) {
             if (sslSocketFactory != null) {
                 ((HttpsURLConnection) conn).setSSLSocketFactory(sslSocketFactory);
@@ -72,6 +93,21 @@ public class RequestBuilder {
         } catch(final IOException e) {
             return new Response.ResponseWrapper(conn.getResponseCode(), conn.getResponseMessage(), conn.getErrorStream(), conn);
         }
+    }
+
+    private static int timeoutMillis(final Duration timeout, final String description) {
+        Objects.requireNonNull(timeout, description);
+        if (timeout.isNegative()) {
+            throw new IllegalArgumentException(description + " must not be negative");
+        }
+
+        final long millis = timeout.toMillis();
+        if (millis > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException(description + " must not exceed " + Integer.MAX_VALUE + "ms");
+        }
+
+        // HttpURLConnection treats zero as infinite, so round positive sub-millisecond durations up.
+        return millis == 0 && !timeout.isZero() ? 1 : (int) millis;
     }
 
 }

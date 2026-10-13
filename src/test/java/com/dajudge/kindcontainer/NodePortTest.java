@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.Container.ExecResult;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -29,6 +30,7 @@ import static org.awaitility.Awaitility.await;
 public class NodePortTest {
 
     private static final Logger LOG = LoggerFactory.getLogger(NodePortTest.class);
+    private static final Duration HOST_PROBE_TIMEOUT = Duration.ofSeconds(2);
 
     @TestFactory
     public Stream<DynamicTest> exposes_node_port() {
@@ -83,7 +85,11 @@ public class NodePortTest {
         return () -> {
             try {
                 final TinyHttpClient client = TinyHttpClient.newHttpClient().build();
-                try (final Response response = client.request().url(url).execute()) {
+                try (final Response response = client.request()
+                        .url(url)
+                        .connectTimeout(HOST_PROBE_TIMEOUT)
+                        .readTimeout(HOST_PROBE_TIMEOUT)
+                        .execute()) {
                     lastResult.set("HTTP " + response.code());
                     return response.code() == 200;
                 }
