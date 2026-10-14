@@ -109,6 +109,7 @@ public class ApiServerContainer<T extends ApiServerContainer<T>> extends Kuberne
             put("authorization-mode", "Node,RBAC");
             put("enable-admission-plugins", "NodeRestriction");
             put("enable-bootstrap-token-auth", "true");
+            put("endpoint-reconciler-type", "none");
             put("client-ca-file", API_SERVER_CA);
             put("tls-cert-file", API_SERVER_CERT);
             put("tls-private-key-file", API_SERVER_KEY);
